@@ -1,0 +1,23 @@
+<canvas padded size="200x200">
+	<content>
+		<rectangle pos="4,4" size="192x192"/>
+	</content>
+	<overlay>
+		<widget size="200x200" type="*widget.PopUp">
+			<widget size="37x43" type="*widget.Shadow">
+				<radialGradient centerOffset="0.5,0.5" pos="-8,-8" size="8x8" startColor="shadow"/>
+				<linearGradient endColor="shadow" pos="0,-8" size="37x8"/>
+				<radialGradient centerOffset="-0.5,0.5" pos="37,-8" size="8x8" startColor="shadow"/>
+				<linearGradient angle="270" pos="37,0" size="8x43" startColor="shadow"/>
+				<radialGradient centerOffset="-0.5,-0.5" pos="37,43" size="8x8" startColor="shadow"/>
+				<linearGradient pos="0,43" size="37x8" startColor="shadow"/>
+				<radialGradient centerOffset="0.5,-0.5" pos="-8,43" size="8x8" startColor="shadow"/>
+				<linearGradient angle="270" endColor="shadow" pos="-8,0" size="8x43"/>
+			</widget>
+			<rectangle fillColor="overlayBackground" size="37x43"/>
+			<widget pos="4,4" size="29x35" type="*widget.Label">
+				<text pos="8,8" size="13x19">Hi</text>
+			</widget>
+		</widget>
+	</overlay>
+</canvas>

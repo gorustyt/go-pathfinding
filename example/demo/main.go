@@ -3,28 +3,14 @@ package main
 import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
-	"fyne.io/fyne/v2/canvas"
-	"image/color"
-	"time"
+	"github.com/gorustyt/go-pathfinding/example/demo/grid_map"
 )
 
-// TODO 图形化demo
 func main() {
+	width, height := 900, 900
 	a := app.New()
-	w := a.NewWindow("Hello World")
-	r := canvas.NewRectangle(color.Black)
-
-	w.SetContent(r)
-	go func() {
-		for {
-			time.Sleep(100 * time.Millisecond)
-			r.StrokeWidth = 1
-			r.Move(fyne.Position{X: 100, Y: 100})
-			r.Resize(fyne.NewSize(40, 40))
-			r.Refresh()
-		}
-	}()
-	//grid.NewGrid(30, 30, w)
-	w.Resize(fyne.NewSize(900, 600))
+	w := a.NewWindow("寻路算法")
+	grid_map.NewMap(width, height, w)
+	w.Resize(fyne.NewSize(float32(width), float32(height)))
 	w.ShowAndRun()
 }

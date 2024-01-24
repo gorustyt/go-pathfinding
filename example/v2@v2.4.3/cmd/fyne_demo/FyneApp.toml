@@ -1,0 +1,18 @@
+[Details]
+  Icon = "../../theme/icons/fyne.png"
+  Name = "Fyne Demo"
+  ID = "io.fyne.demo"
+  Version = "2.4.0"
+  Build = 11
+
+[Development]
+  HelperText = "This binary was built with debug symbols"
+
+[Release]
+  HelperText = "This binary was built without debug symbols"
+
+[LinuxAndBSD]
+  GenericName = "Toolkit Demo"
+  Categories = ["Development"]
+  Comment = "A demo of Fyne and its capabilities."
+  Keywords = ["demo", "fyne"]
