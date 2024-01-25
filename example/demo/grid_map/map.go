@@ -43,11 +43,10 @@ func (g *Map) DragEnd() {
 }
 
 func (g *Map) Scrolled(ev *fyne.ScrollEvent) {
-	size := float32(int(ev.Scrolled.DY) / int(g.oneGird))
-	if size > 0 {
-		g.scale += size * 0.35
+	if ev.Scrolled.DY > 0 {
+		g.scale += g.scale * 0.35
 	} else {
-		g.scale += size * 1
+		g.scale -= g.scale * .5
 	}
 
 	fmt.Println("scale===", g.scale)
@@ -70,7 +69,7 @@ func (g *Map) Position() fyne.Position {
 }
 
 func (g *Map) Resize(size fyne.Size) {
-	fmt.Println("resize==")
+
 }
 
 func (g *Map) Size() fyne.Size {
