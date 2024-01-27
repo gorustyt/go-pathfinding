@@ -1,32 +1,43 @@
 package ui
 
 import (
+	"fmt"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
-	"github.com/gorustyt/go-pathfinding/example/cmd/fyne_demo/tutorials"
-
 	"fyne.io/fyne/v2/widget"
+)
+
+const (
+	AStar               = "AStar"
+	IdaStar             = "Ida star"
+	BreadthFirstSearch  = "Breadth First Search"
+	BestFirstSearch     = "Best First Search"
+	Dijkstra            = "Dijkstra"
+	JumpPointSearch     = "Jump Point Search"
+	OrthogonalJumpPoint = "Orthogonal Jump Point"
+	Trace               = "Trace"
 )
 
 var toolData = map[string][]string{
 	"": {
-		"AStar",
-		"Ida star",
-		"Breadth First Search",
-		"Dijkstra",
-		"Jump Point Search",
-		"Orthogonal Jump Point",
-		"Trace",
+		AStar,
+		IdaStar,
+		BreadthFirstSearch,
+		BestFirstSearch,
+		Dijkstra,
+		JumpPointSearch,
+		OrthogonalJumpPoint,
+		Trace,
 	},
+	AStar:               {"none"},
+	IdaStar:             {"none"},
+	BreadthFirstSearch:  {"none"},
+	BestFirstSearch:     {"none"},
+	Dijkstra:            {"none"},
+	JumpPointSearch:     {"none"},
+	OrthogonalJumpPoint: {"none"},
+	Trace:               {"none"},
 }
-var (
-	Options      = "Options"
-	optionsGroup = []string{
-		"Allow ",
-		"Diagonal",
-		"Bi-directional",
-	}
-)
 
 func gewVisualizeRecursion() fyne.CanvasObject {
 	return widget.NewCheckGroup([]string{"Visualize recursion"}, func(strings []string) {
@@ -93,50 +104,82 @@ func getIDAStarObjs() (res []fyne.CanvasObject) {
 	return res
 }
 
-var toolObj = map[string]fyne.CanvasObject{
-	"AStar":                container.NewHBox(getAStarObjs()...),
-	"Ida star":             container.NewHBox(getIDAStarObjs()...),
-	"Breadth First Search": container.NewHBox(getOptions3()...),
-	"Best First Search":    container.NewHBox(append(getHeuristic(), getOptions3()...)...),
-	"Dijkstra":             container.NewHBox(getOptions3()...),
-	"Jump Point Search": container.NewHBox(
-		append(getHeuristic(), gewVisualizeRecursion())...),
-	"Orthogonal Jump Point": container.NewHBox(
-		append(getHeuristic(), gewVisualizeRecursion())...),
-	"Trace": container.NewHBox(append(getHeuristic(), getOptions2()...)...),
+func getToolObj(uid string) fyne.CanvasObject {
+	switch uid {
+	case AStar:
+		c := container.NewVBox(getAStarObjs()...)
+		return c
+	case IdaStar:
+		return container.NewVBox(getIDAStarObjs()...)
+	case BreadthFirstSearch:
+		return container.NewVBox(getOptions3()...)
+	case BestFirstSearch:
+		return container.NewVBox(append(getHeuristic(), getOptions3()...)...)
+	case Dijkstra:
+		return container.NewVBox(getOptions3()...)
+	case JumpPointSearch:
+		return container.NewVBox(
+			append(getHeuristic(), gewVisualizeRecursion())...)
+	case OrthogonalJumpPoint:
+		return container.NewVBox(
+			append(getHeuristic(), gewVisualizeRecursion())...)
+	case Trace:
+		return container.NewVBox(append(getHeuristic(), getOptions2()...)...)
+	}
+	return nil
 }
 
 const preferenceCurrentTutorial = "currentTutorial"
 
-func CreateToolTree(view func(w fyne.Window) fyne.CanvasObject) {
+func CreateTool(view func()) fyne.CanvasObject {
+	bStart := &widget.Button{
+		Text:       "start",
+		Importance: widget.SuccessImportance,
+		OnTapped:   func() { fmt.Println("high importance button") },
+	}
+	bPause := &widget.Button{
+		Text:       "pause",
+		Importance: widget.WarningImportance,
+		OnTapped:   func() { fmt.Println("tapped danger button") },
+	}
+	bStop := &widget.Button{
+		Text:       "stop",
+		Importance: widget.DangerImportance,
+		OnTapped:   func() { fmt.Println("tapped warning button") },
+	}
+	return container.NewVBox(createToolTree(view), container.NewGridWithColumns(3, bStart, bPause, bStop))
+}
+
+func createToolTree(view func()) fyne.CanvasObject {
 	a := fyne.CurrentApp()
 	tree := &widget.Tree{
 		ChildUIDs: func(uid string) []string {
-			return tutorials.TutorialIndex[uid]
+			return toolData[uid]
 		},
 		IsBranch: func(uid string) bool {
-			children, ok := tutorials.TutorialIndex[uid]
+			children, ok := toolData[uid]
 
 			return ok && len(children) > 0
 		},
 		CreateNode: func(branch bool) fyne.CanvasObject {
+			if !branch {
+				return getToolObj(AStar)
+			}
 			return widget.NewLabel("Collection Widgets")
 		},
 		UpdateNode: func(uid string, branch bool, obj fyne.CanvasObject) {
-			t, ok := tutorials.Tutorials[uid]
-			if !ok {
-				fyne.LogError("Missing tutorial panel: "+uid, nil)
-				return
+			if branch {
+				obj.(*widget.Label).SetText(uid)
+			} else {
+
 			}
-			obj.(*widget.Label).SetText(t.Title)
+
 		},
 		OnSelected: func(uid string) {
-			if t, ok := tutorials.Tutorials[uid]; ok {
-				a.Preferences().SetString(preferenceCurrentTutorial, uid)
-				view(t)
-			}
+			view()
 		},
 	}
-	currentPref := a.Preferences().StringWithFallback(preferenceCurrentTutorial, "welcome")
+	currentPref := a.Preferences().StringWithFallback(preferenceCurrentTutorial, AStar)
 	tree.Select(currentPref)
+	return tree
 }

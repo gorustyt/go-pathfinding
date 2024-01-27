@@ -10,17 +10,17 @@ import (
 
 func main() {
 	width, height := 900, 900
-	a := app.New()
+	a := app.NewWithID("path-finding")
 	w := a.NewWindow("寻路算法")
-	grid_map.NewMap(width, height, w)
+	m := grid_map.NewMap(width, height)
 	content := container.NewStack()
-	setView := func(view func(w fyne.Window) fyne.CanvasObject) {
-		content.Objects = []fyne.CanvasObject{view(w)}
+	setView := func() {
+		content.Objects = []fyne.CanvasObject{m}
 		content.Refresh()
 	}
-	tutorial := container.NewBorder(
+	gridMap := container.NewBorder(
 		nil, nil, nil, nil, content)
-	split := container.NewHSplit(ui.CreateToolTree(setView), tutorial)
+	split := container.NewHSplit(ui.CreateTool(setView), gridMap)
 	split.Offset = 0.2
 	w.SetContent(split)
 	w.Resize(fyne.NewSize(float32(width), float32(height)))

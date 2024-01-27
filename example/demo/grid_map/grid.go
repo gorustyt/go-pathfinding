@@ -5,15 +5,43 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/widget"
+	"image/color"
 	"log"
 )
 
 type grid struct {
-	base   widget.BaseWidget
-	g      *canvas.Rectangle
-	i, j   float32
-	scale  float32
-	isHide bool
+	base        widget.BaseWidget
+	g           *canvas.Rectangle
+	i, j        float32
+	scale       float32
+	isHide      bool
+	fillColor   color.NRGBA
+	strokeColor color.NRGBA
+	offset      fyne.Position
+}
+
+var (
+	strokeColor = color.NRGBA{R: 255, G: 120, B: 0, A: 255}
+)
+
+func (g *grid) SetStart() {
+	g.fillColor = color.NRGBA{R: 255, A: 255}
+	g.strokeColor = strokeColor
+}
+
+func (g *grid) SetEnd() {
+	g.fillColor = color.NRGBA{G: 255, A: 255}
+	g.strokeColor = strokeColor
+}
+
+func (g *grid) SetPath() {
+	g.fillColor = color.NRGBA{B: 255, A: 255}
+	g.strokeColor = strokeColor
+}
+
+func (g *grid) SetNotWalk() {
+	g.fillColor = color.NRGBA{R: 128, G: 128, B: 128, A: 255}
+	g.strokeColor = strokeColor
 }
 
 func (g *grid) MinSize() fyne.Size {
@@ -63,11 +91,11 @@ func (g *grid) Show() {
 }
 
 func (g *grid) Refresh() {
+	g.g.FillColor = g.fillColor
 	if g.isHide {
 		g.g.Hide()
 	} else {
-		g.g.Move(fyne.Position{X: g.i * g.scale, Y: g.j * g.scale})
-		g.g.Show()
+		g.g.Move(fyne.Position{X: g.i * g.scale, Y: g.j * g.scale}.Subtract(g.offset))
 		g.g.Resize(fyne.NewSize(g.scale-1, g.scale-1))
 	}
 	g.g.Refresh()
@@ -79,7 +107,7 @@ func (g *grid) CreateRenderer() fyne.WidgetRenderer {
 }
 
 func newGrid(i, j int, scale float32) *grid {
-	n := &grid{i: float32(i), j: float32(j), scale: scale, isHide: true}
+	n := &grid{i: float32(i), j: float32(j), scale: scale, isHide: false, fillColor: color.NRGBA{R: 255, G: 255, B: 255, A: 255}}
 	n.base.ExtendBaseWidget(n)
 	return n
 }
