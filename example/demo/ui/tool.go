@@ -1,156 +1,210 @@
 package ui
 
 import (
-	"fmt"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
-)
-
-const (
-	AStar               = "AStar"
-	IdaStar             = "Ida star"
-	BreadthFirstSearch  = "Breadth First Search"
-	BestFirstSearch     = "Best First Search"
-	Dijkstra            = "Dijkstra"
-	JumpPointSearch     = "Jump Point Search"
-	OrthogonalJumpPoint = "Orthogonal Jump Point"
-	Trace               = "Trace"
+	path_finding "github.com/gorustyt/go-pathfinding"
+	"github.com/gorustyt/go-pathfinding/example/demo/grid_map"
 )
 
 var toolData = map[string][]string{
 	"": {
-		AStar,
-		IdaStar,
-		BreadthFirstSearch,
-		BestFirstSearch,
-		Dijkstra,
-		JumpPointSearch,
-		OrthogonalJumpPoint,
-		Trace,
+		path_finding.DescAStar,
+		path_finding.DescIdaStar,
+		path_finding.DescBreadthFirstSearch,
+		path_finding.DescBestFirstSearch,
+		path_finding.DescDijkstra,
+		path_finding.DescJumpPointSearch,
+		path_finding.DescOrthogonalJumpPoint,
+		path_finding.DescTrace,
 	},
-	AStar:               {"none"},
-	IdaStar:             {"none"},
-	BreadthFirstSearch:  {"none"},
-	BestFirstSearch:     {"none"},
-	Dijkstra:            {"none"},
-	JumpPointSearch:     {"none"},
-	OrthogonalJumpPoint: {"none"},
-	Trace:               {"none"},
+	path_finding.DescAStar:               {"none"},
+	path_finding.DescIdaStar:             {"none"},
+	path_finding.DescBreadthFirstSearch:  {"none"},
+	path_finding.DescBestFirstSearch:     {"none"},
+	path_finding.DescDijkstra:            {"none"},
+	path_finding.DescJumpPointSearch:     {"none"},
+	path_finding.DescOrthogonalJumpPoint: {"none"},
+	path_finding.DescTrace:               {"none"},
 }
 
 func gewVisualizeRecursion() fyne.CanvasObject {
-	return widget.NewCheckGroup([]string{"Visualize recursion"}, func(strings []string) {
+	g := widget.NewCheckGroup([]string{"Visualize recursion"}, func(strings []string) {
 
 	})
+	g.Selected = []string{"Visualize recursion"}
+	return g
 }
 
-func getHeuristic() (res []fyne.CanvasObject) {
+func getHeuristic(cfg *grid_map.Config) (res []fyne.CanvasObject) {
+	g := widget.NewRadioGroup([]string{
+		path_finding.DescHeuristicManhattan,
+		path_finding.DescHeuristicEuclidean,
+		path_finding.DescHeuristicOctile,
+		path_finding.DescHeuristicChebyshev,
+	}, func(s string) {
+		cfg.Heuristic = path_finding.GetHeuristicByDesc(s)
+	})
+	g.Selected = path_finding.DescHeuristicManhattan
 	return []fyne.CanvasObject{
 		widget.NewLabel("Heuristic"),
-		widget.NewRadioGroup([]string{
-			"Manhattan ",
-			"Euclidean ",
-			"Octile",
-			"Chebyshev",
-		}, func(s string) {
-
-		}),
+		g,
 	}
 }
 
-func getOptions3() (res []fyne.CanvasObject) {
+const (
+	optionsAllowDiagonal    = "Allow Diagonal"
+	optionsBiDirectional    = "Bi-directional"
+	optionsDontCrossCorners = "Don't Cross Corners"
+)
+
+func parseOptions(s []string, cfg *grid_map.Config) {
+	allowDiagonal := cfg.AllowDiagonal
+	biDirectional := cfg.BiDirectional
+	dontCrossCorners := cfg.DontCrossCorners
+	for _, v := range s {
+		switch v {
+		case optionsAllowDiagonal:
+			allowDiagonal = true
+		case optionsBiDirectional:
+			biDirectional = true
+		case optionsDontCrossCorners:
+			dontCrossCorners = true
+		}
+	}
+	cfg.AllowDiagonal = allowDiagonal
+	cfg.BiDirectional = biDirectional
+	cfg.DontCrossCorners = dontCrossCorners
+}
+func getOptions3(cfg *grid_map.Config) (res []fyne.CanvasObject) {
+	g := widget.NewCheckGroup([]string{
+		optionsAllowDiagonal,
+		optionsBiDirectional,
+		optionsDontCrossCorners,
+	}, func(s []string) {
+		parseOptions(s, cfg)
+	})
+	if cfg.AllowDiagonal {
+		g.Selected = append(g.Selected, optionsAllowDiagonal)
+	}
+	if cfg.BiDirectional {
+		g.Selected = append(g.Selected, optionsBiDirectional)
+	}
+	if cfg.DontCrossCorners {
+		g.Selected = append(g.Selected, optionsDontCrossCorners)
+	}
+	return []fyne.CanvasObject{
+		widget.NewLabel("Options"),
+		g,
+	}
+}
+
+func getOptions2(cfg *grid_map.Config) (res []fyne.CanvasObject) {
 	return []fyne.CanvasObject{
 		widget.NewLabel("Options"),
 		widget.NewCheckGroup([]string{
-			"Allow Diagonal",
-			"Bi-directional",
-			"Don't Cross Corners",
-		}, func(strings []string) {
-
+			optionsAllowDiagonal,
+			optionsBiDirectional,
+		}, func(s []string) {
+			parseOptions(s, cfg)
 		}),
 	}
 }
 
-func getOptions2() (res []fyne.CanvasObject) {
-	return []fyne.CanvasObject{
-		widget.NewLabel("Options"),
-		widget.NewCheckGroup([]string{
-			"Allow Diagonal",
-			"Bi-directional",
-		}, func(strings []string) {
-
-		}),
-	}
-}
-
-func getAStarObjs() (res []fyne.CanvasObject) {
-	res = append(getHeuristic(), getOptions3()...)
+func getAStarObjs(cfg *grid_map.Config) (res []fyne.CanvasObject) {
+	entry := widget.NewEntry()
+	entry.Text = "1"
+	entry.Bind(cfg.Weight)
+	res = append(getHeuristic(cfg), getOptions3(cfg)...)
 	res = append(res, container.NewGridWithColumns(2,
-		widget.NewEntry(),
+		entry,
 		widget.NewLabel("Weight")))
 	return res
 }
 
-func getIDAStarObjs() (res []fyne.CanvasObject) {
-	res = append(getHeuristic(), getOptions2()...)
+func getIDAStarObjs(cfg *grid_map.Config) (res []fyne.CanvasObject) {
+	entry1 := widget.NewEntry()
+	entry1.Bind(cfg.Weight)
+	entry1.Text = "1"
+	entry2 := widget.NewEntry()
+	entry2.Bind(cfg.SecondLimit)
+	entry2.Text = "10"
+	res = append(getHeuristic(cfg), getOptions2(cfg)...)
 	res = append(res, container.NewGridWithColumns(2,
-		widget.NewEntry(),
+		entry1,
 		widget.NewLabel("Weight")))
 	res = append(res, container.NewGridWithColumns(2,
-		widget.NewEntry(),
+		entry2,
 		widget.NewLabel("Seconds limit")))
 	res = append(res, gewVisualizeRecursion())
 	return res
 }
 
-func getToolObj(uid string) fyne.CanvasObject {
+func getToolObj(uid string, cfg *grid_map.Config) fyne.CanvasObject {
 	switch uid {
-	case AStar:
-		c := container.NewVBox(getAStarObjs()...)
+	case path_finding.DescAStar:
+		c := container.NewVBox(getAStarObjs(cfg)...)
 		return c
-	case IdaStar:
-		return container.NewVBox(getIDAStarObjs()...)
-	case BreadthFirstSearch:
-		return container.NewVBox(getOptions3()...)
-	case BestFirstSearch:
-		return container.NewVBox(append(getHeuristic(), getOptions3()...)...)
-	case Dijkstra:
-		return container.NewVBox(getOptions3()...)
-	case JumpPointSearch:
+	case path_finding.DescIdaStar:
+		return container.NewVBox(getIDAStarObjs(cfg)...)
+	case path_finding.DescBreadthFirstSearch:
+		return container.NewVBox(getOptions3(cfg)...)
+	case path_finding.DescBestFirstSearch:
+		return container.NewVBox(append(getHeuristic(cfg), getOptions3(cfg)...)...)
+	case path_finding.DescDijkstra:
+		return container.NewVBox(getOptions3(cfg)...)
+	case path_finding.DescJumpPointSearch:
 		return container.NewVBox(
-			append(getHeuristic(), gewVisualizeRecursion())...)
-	case OrthogonalJumpPoint:
+			append(getHeuristic(cfg), gewVisualizeRecursion())...)
+	case path_finding.DescOrthogonalJumpPoint:
 		return container.NewVBox(
-			append(getHeuristic(), gewVisualizeRecursion())...)
-	case Trace:
-		return container.NewVBox(append(getHeuristic(), getOptions2()...)...)
+			append(getHeuristic(cfg), gewVisualizeRecursion())...)
+	case path_finding.DescTrace:
+		return container.NewVBox(append(getHeuristic(cfg), getOptions2(cfg)...)...)
 	}
 	return nil
 }
 
 const preferenceCurrentTutorial = "currentTutorial"
 
-func CreateTool(view func()) fyne.CanvasObject {
+func CreateTool(w fyne.Window, view func(), config *grid_map.Config) fyne.CanvasObject {
 	bStart := &widget.Button{
 		Text:       "start",
 		Importance: widget.SuccessImportance,
-		OnTapped:   func() { fmt.Println("high importance button") },
+		OnTapped: func() {
+			config.OnStart()
+		},
 	}
 	bPause := &widget.Button{
 		Text:       "pause",
 		Importance: widget.WarningImportance,
-		OnTapped:   func() { fmt.Println("tapped danger button") },
+		OnTapped: func() {
+			config.OnPause()
+		},
 	}
 	bStop := &widget.Button{
 		Text:       "stop",
 		Importance: widget.DangerImportance,
-		OnTapped:   func() { fmt.Println("tapped warning button") },
+		OnTapped: func() {
+			config.OnStop()
+		},
 	}
-	return container.NewVBox(createToolTree(view), container.NewGridWithColumns(3, bStart, bPause, bStop))
+	bClear := &widget.Button{
+		Text:       "clear",
+		Importance: widget.MediumImportance,
+		OnTapped: func() {
+			config.OnClear()
+		},
+	}
+	return container.NewBorder(container.NewVBox(
+		widget.NewSeparator(),
+		container.NewGridWithColumns(4, bStart, bPause, bStop, bClear),
+		widget.NewSeparator(),
+	), nil, nil, nil, createToolTree(w, view, config))
 }
 
-func createToolTree(view func()) fyne.CanvasObject {
+func createToolTree(w fyne.Window, view func(), cfg *grid_map.Config) fyne.CanvasObject {
 	a := fyne.CurrentApp()
 	tree := &widget.Tree{
 		ChildUIDs: func(uid string) []string {
@@ -163,7 +217,7 @@ func createToolTree(view func()) fyne.CanvasObject {
 		},
 		CreateNode: func(branch bool) fyne.CanvasObject {
 			if !branch {
-				return getToolObj(AStar)
+				return getToolObj(path_finding.DescAStar, cfg)
 			}
 			return widget.NewLabel("Collection Widgets")
 		},
@@ -176,10 +230,11 @@ func createToolTree(view func()) fyne.CanvasObject {
 
 		},
 		OnSelected: func(uid string) {
+			cfg.Uid = uid
 			view()
 		},
 	}
-	currentPref := a.Preferences().StringWithFallback(preferenceCurrentTutorial, AStar)
+	currentPref := a.Preferences().StringWithFallback(preferenceCurrentTutorial, path_finding.DescAStar)
 	tree.Select(currentPref)
 	return tree
 }

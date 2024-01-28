@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
+	"fyne.io/fyne/v2/driver/desktop"
 	"fyne.io/fyne/v2/widget"
 	"image/color"
 	"log"
@@ -18,19 +19,43 @@ type grid struct {
 	fillColor   color.NRGBA
 	strokeColor color.NRGBA
 	offset      fyne.Position
+	m           *Map
+	dragEndPos  fyne.Position
+
+	popUpText *widget.Label
+	popUp     *widget.PopUp
 }
 
 var (
 	strokeColor = color.NRGBA{R: 255, G: 120, B: 0, A: 255}
+	white       = color.NRGBA{R: 255, G: 255, B: 255, A: 255}
+	gray        = color.NRGBA{R: 128, G: 128, B: 128, A: 255}
 )
 
+func (g *grid) SetRevWalkAble() {
+	if g.fillColor == gray {
+		g.SetWalkAble(true)
+	} else {
+		g.SetWalkAble(false)
+	}
+}
+
+func (g *grid) SetWalkAble(enable bool) {
+	if !enable {
+		g.fillColor = gray
+		g.strokeColor = strokeColor
+	} else {
+		g.fillColor = white
+		g.strokeColor = white
+	}
+}
 func (g *grid) SetStart() {
-	g.fillColor = color.NRGBA{R: 255, A: 255}
+	g.fillColor = color.NRGBA{G: 255, A: 255}
 	g.strokeColor = strokeColor
 }
 
 func (g *grid) SetEnd() {
-	g.fillColor = color.NRGBA{G: 255, A: 255}
+	g.fillColor = color.NRGBA{R: 255, A: 255}
 	g.strokeColor = strokeColor
 }
 
@@ -39,25 +64,48 @@ func (g *grid) SetPath() {
 	g.strokeColor = strokeColor
 }
 
-func (g *grid) SetNotWalk() {
-	g.fillColor = color.NRGBA{R: 128, G: 128, B: 128, A: 255}
-	g.strokeColor = strokeColor
+func (g *grid) Dragged(ev *fyne.DragEvent) {
+	g.dragEndPos = ev.AbsolutePosition
+}
+func (g *grid) DragEnd() {
+	g.m.OnGridChange(g, g.dragEndPos)
 }
 
 func (g *grid) MinSize() fyne.Size {
-	return fyne.Size{Width: 10, Height: 10}
+	return fyne.Size{Width: g.scale, Height: g.scale}
+}
+
+func (g *grid) MouseIn(ev *desktop.MouseEvent) {
+	g.ShowPopUp(ev)
+}
+
+func (g *grid) ShowPopUp(ev *desktop.MouseEvent) {
+	text := fmt.Sprintf("(%v,%v,%v,%v)", g.g.Position().X, g.g.Position().Y, ev.Position.X, ev.Position.Y)
+	if g.popUp == nil {
+		// 创建弹出框的内容
+		g.popUpText = widget.NewLabel(text)
+		// 创建并显示 Popover
+		g.popUp = widget.NewPopUp(g.popUpText, g.m.win.Canvas())
+	}
+	g.popUpText.Text = text
+	g.popUp.Move(fyne.Position{X: ev.AbsolutePosition.X, Y: ev.AbsolutePosition.Y})
+	g.popUp.Show() // 将弹出框显示在按钮的中心位置
+}
+
+func (g *grid) MouseMoved(ev *desktop.MouseEvent) {}
+
+func (g *grid) MouseOut() {
+	g.popUp.Hide()
 }
 
 func (g *grid) Tapped(e *fyne.PointEvent) {
-
+	g.m.OnGridWalkAble(g)
+	//i, j := g.m.GetIndex(e.AbsolutePosition)
+	log.Println("I have Tapped tapped at", e, g.i, g.j, g.fillColor)
 }
 
 func (g *grid) TappedSecondary(e *fyne.PointEvent) {
 	log.Println("I have been right tapped at", e, g.i, g.j)
-}
-
-func (g *grid) DoubleTapped(e *fyne.PointEvent) {
-	log.Println("I have been double tapped at", e, g.i, g.j)
 }
 
 func (g *grid) Move(position fyne.Position) {
@@ -95,8 +143,8 @@ func (g *grid) Refresh() {
 	if g.isHide {
 		g.g.Hide()
 	} else {
-		g.g.Move(fyne.Position{X: g.i * g.scale, Y: g.j * g.scale}.Subtract(g.offset))
-		g.g.Resize(fyne.NewSize(g.scale-1, g.scale-1))
+		g.g.Move(fyne.Position{X: g.i * g.scale, Y: g.j * g.scale})
+		g.g.Resize(fyne.NewSize(g.scale, g.scale))
 	}
 	g.g.Refresh()
 
@@ -107,7 +155,7 @@ func (g *grid) CreateRenderer() fyne.WidgetRenderer {
 }
 
 func newGrid(i, j int, scale float32) *grid {
-	n := &grid{i: float32(i), j: float32(j), scale: scale, isHide: false, fillColor: color.NRGBA{R: 255, G: 255, B: 255, A: 255}}
+	n := &grid{i: float32(i), j: float32(j), scale: scale, isHide: false, fillColor: white}
 	n.base.ExtendBaseWidget(n)
 	return n
 }
@@ -121,7 +169,7 @@ type gridRenderer struct {
 }
 
 func (g gridRenderer) Destroy() {
-	fmt.Println("destroy")
+
 }
 
 func (g gridRenderer) Layout(size fyne.Size) {

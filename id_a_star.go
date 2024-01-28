@@ -11,7 +11,7 @@ func (grid *Grid) idAStartSearch(heuristic func(a, b *GridNodeInfo) int, startTi
 
 		return nil, 0
 	}
-	f := g + float64(heuristic(node, end.ToGridNodeInfo()))*grid.Config.weight
+	f := g + float64(heuristic(node, end.ToGridNodeInfo()))*grid.Config.Weight
 	//============打印遍历到的节点位置
 	arr := grid.getPrintMap()
 	arr[node.X][node.Y] = "x"

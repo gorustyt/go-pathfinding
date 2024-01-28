@@ -4,8 +4,12 @@ import (
 	"fmt"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
+	"fyne.io/fyne/v2/data/binding"
 	"fyne.io/fyne/v2/widget"
+	path_finding "github.com/gorustyt/go-pathfinding"
 	"image/color"
+	"log"
+	"strconv"
 	"sync"
 )
 
@@ -15,6 +19,7 @@ const (
 )
 
 type Map struct {
+	win     fyne.Window
 	base    widget.BaseWidget
 	w, h    int //地图宽和高
 	hide    bool
@@ -26,26 +31,105 @@ type Map struct {
 	scale   float32          //缩放
 	lock    sync.Mutex
 
-	start fyne.Position   //起点
-	end   fyne.Position   //终点
-	paths []fyne.Position //寻路路径
-	obs   []fyne.Position //障碍
+	start *grid
+	end   *grid
+	paths []*grid
+	obs   []*grid
+
+	Cfg *Config
+
+	isClear bool
 }
 
-func (g *Map) SetStart(x, y float64) {
-	g.start = fyne.Position{X: float32(x), Y: float32(y)}
+func (g *Map) OnClear() {
+	fmt.Println("on_clean")
+	g.clear()
+	g.Refresh()
 }
 
-func (g *Map) SetEnd(x, y float64) {
-	g.start = fyne.Position{X: float32(x), Y: float32(y)}
+func (g *Map) clear() {
+
+	for _, v := range g.obs {
+		v.SetWalkAble(true)
+	}
+	for _, v := range g.paths {
+		v.SetWalkAble(true)
+	}
+	g.obs = g.obs[:0]
+	g.paths = g.paths[:0]
+	g.isClear = true
 }
 
-func (g *Map) SetPath() {
-
+func (g *Map) OnStart() {
+	fmt.Println("on_start")
+	g.isClear = false
+	g.paths = g.paths[:0]
+	gw, gh := g.GetGridSize()
+	t, c := g.Cfg.GetPathFindingConfig()
+	m := path_finding.NewGridWithConfig(gw, gh, &c)
+	for _, v := range g.obs {
+		m.SetWalkableAt(int(v.i), int(v.j), false)
+	}
+	starX, startY := int(g.start.i), int(g.start.j)
+	endX, endY := int(g.end.i), int(g.end.j)
+	paths := m.PathFindingRoute(t)(starX, startY, endX, endY)
+	for _, v := range paths {
+		gg := g.grids[v.X][v.Y]
+		if gg == g.start || gg == g.end {
+			continue
+		}
+		g.paths = append(g.paths, gg)
+	}
+	g.Refresh()
 }
 
-func (g *Map) SetNotWalk(x, y float64) {
+func (g *Map) OnPause() {
+	fmt.Println("on_pause")
+}
 
+func (g *Map) OnStop() {
+	fmt.Println("on_stop")
+}
+
+func (g *Map) OnGridWalkAble(gg *grid) {
+	if !g.isClear {
+		return
+	}
+	if gg == g.start || gg == g.end {
+		return
+	}
+	for _, v := range g.obs {
+		if v == gg {
+			return
+		}
+	}
+	g.obs = append(g.obs, gg)
+	g.Refresh()
+}
+func (g *Map) OnGridChange(gg *grid, pos fyne.Position) {
+	if !g.isClear {
+		return
+	}
+	i, j := g.GetIndex(pos)
+	changeGird := g.grids[i][j]
+	if gg == g.start && changeGird != g.end {
+		gg.SetWalkAble(true)
+		g.start = changeGird
+	} else if gg == g.end && changeGird != g.start {
+		gg.SetWalkAble(true)
+		g.end = changeGird
+	}
+	g.Refresh()
+}
+
+func (g *Map) SetStartPosition(pos fyne.Position) {
+	i, j := g.GetIndex(pos)
+	g.start = g.grids[i][j]
+}
+
+func (g *Map) SetEndPosition(pos fyne.Position) {
+	i, j := g.GetIndex(pos)
+	g.end = g.grids[i][j]
 }
 
 func (g *Map) MinSize() fyne.Size {
@@ -54,12 +138,19 @@ func (g *Map) MinSize() fyne.Size {
 }
 
 func (g *Map) Dragged(ev *fyne.DragEvent) {
-	offsetX := float32(int(ev.Dragged.DX) % int(g.oneGird))
-	offsetY := float32(int(ev.Dragged.DY) % int(g.oneGird))
-	g.offset = g.offset.SubtractXY(offsetX, offsetY)
+	//offsetX := float32(int(ev.Dragged.DX) % int(g.oneGird))
+	//offsetY := float32(int(ev.Dragged.DY) % int(g.oneGird))
+	//g.offset = g.offset.SubtractXY(offsetX, offsetY)
 }
 func (g *Map) DragEnd() {
 	g.Refresh()
+}
+
+func (g *Map) DoubleTapped(ev *fyne.PointEvent) {
+	x, y := g.GetIndex(ev.AbsolutePosition)
+	log.Println("I have been double tapped at", ev.AbsolutePosition.X, ev.AbsolutePosition.Y, x, y)
+	//g.ShowPopUp()
+	//g.m.OnGridWalkAble(g)
 }
 
 func (g *Map) Scrolled(ev *fyne.ScrollEvent) {
@@ -106,22 +197,18 @@ func (g *Map) Visible() bool {
 }
 
 func (g *Map) drawMap() {
-	i, j := g.GetIndex(g.start)
-	g.grids[i][j].SetStart()
-	i, j = g.GetIndex(g.end)
-	g.grids[i][j].SetEnd()
+	g.start.SetStart()
+	g.end.SetEnd()
 	for _, v := range g.obs {
-		i, j = g.GetIndex(v)
-		g.grids[i][j].SetNotWalk()
+		v.SetWalkAble(false)
 	}
 	for _, v := range g.paths {
-		i, j = g.GetIndex(v)
-		g.grids[i][j].SetPath()
+		v.SetPath()
 	}
 
 	gw, gh := g.GetGridSize()
-	for i = 0; i < gw; i++ {
-		for j = 0; j < gh; j++ {
+	for i := 0; i < gw; i++ {
+		for j := 0; j < gh; j++ {
 			if i != gw {
 				//画横线
 				g.rows[i][j].Position1 = fyne.NewPos(float32(i)*g.oneGird*g.scale, float32(j)*g.oneGird*g.scale).Subtract(g.offset)
@@ -144,11 +231,13 @@ func (g *Map) drawMap() {
 	}
 
 }
+
 func (g *Map) GetIndex(pos fyne.Position) (i, j int) {
-	i = int(pos.X) / int(g.oneGird)
-	j = int(pos.Y) / int(g.oneGird)
+	i = int(pos.X) / int(g.oneGird*g.scale/2)
+	j = int(pos.Y) / int(g.oneGird*g.scale/2)
 	return i, j
 }
+
 func (g *Map) Show() {
 	g.hide = false
 	g.Refresh()
@@ -162,13 +251,14 @@ func (g *Map) Refresh() {
 	g.drawMap()
 }
 
-func NewMap(w, h int) fyne.CanvasObject {
+func NewMap(w, h int, win fyne.Window) fyne.CanvasObject {
 	g := &Map{w: w,
+		win:     win,
 		h:       h,
 		scale:   1,
-		start:   fyne.Position{X: 50, Y: 50},
-		end:     fyne.Position{X: 400, Y: 600},
+		isClear: true,
 		oneGird: 40}
+	g.Cfg = NewConfig(g.OnStart, g.OnPause, g.OnStop, g.OnClear)
 	g.base.ExtendBaseWidget(g)
 	maxW, maxH := g.GetGridSize()
 	g.rows = make([][]*canvas.Line, maxW+1)
@@ -200,10 +290,13 @@ func NewMap(w, h int) fyne.CanvasObject {
 			if i < maxW && j < maxH {
 				gg := newGrid(i, j, g.oneGird)
 				gg.g = r
+				gg.m = g
 				g.grids[i][j] = gg
 			}
 		}
 	}
+	g.start = g.grids[0][0]
+	g.end = g.grids[10][10]
 	return g
 }
 
@@ -220,7 +313,7 @@ type MapRenderer struct {
 }
 
 func (g MapRenderer) Destroy() {
-	fmt.Println("destroy")
+
 }
 
 func (g MapRenderer) Layout(size fyne.Size) {
@@ -237,4 +330,58 @@ func (g MapRenderer) Objects() (res []fyne.CanvasObject) {
 		}
 	}
 	return res
+}
+
+type Config struct {
+	Weight      binding.String
+	SecondLimit binding.String
+	Uid         string
+	*path_finding.PathFindingConfig
+
+	OnStart func()
+	OnPause func()
+	OnStop  func()
+	OnClear func()
+}
+
+func NewConfig(OnStart func(),
+	OnPause func(),
+	OnStop func(), OnClear func()) *Config {
+	return &Config{
+		OnStop:            OnStop,
+		OnPause:           OnPause,
+		OnStart:           OnStart,
+		OnClear:           OnClear,
+		Weight:            binding.NewString(),
+		SecondLimit:       binding.NewString(),
+		PathFindingConfig: path_finding.GetDefaultConfig(),
+	}
+}
+
+func (cfg *Config) GetPathFindingConfig() (t path_finding.PathFindingType, c path_finding.PathFindingConfig) {
+	c = *cfg.PathFindingConfig
+	s, err := cfg.Weight.Get()
+	if err != nil {
+		panic(err)
+	}
+	if s != "" {
+		cfg.PathFindingConfig.Weight, err = strconv.ParseFloat(s, 64)
+		if err != nil {
+			panic(err)
+		}
+	}
+
+	s, err = cfg.SecondLimit.Get()
+	if err != nil {
+		panic(err)
+	}
+	if s != "" {
+		v, err := strconv.ParseInt(s, 10, 64)
+		if err != nil {
+			panic(err)
+		}
+		cfg.PathFindingConfig.IdAStarTimeLimit = v
+	}
+	t = path_finding.GetPathFindingType(cfg.Uid, &c)
+	return
 }

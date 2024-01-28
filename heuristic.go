@@ -2,6 +2,29 @@ package path_finding
 
 import "math"
 
+const (
+	DescHeuristicManhattan = "Manhattan "
+	DescHeuristicEuclidean = "Euclidean "
+	DescHeuristicOctile    = "Octile"
+	DescHeuristicChebyshev = "Chebyshev"
+)
+
+func GetHeuristicByDesc(desc string) Heuristic {
+	switch desc {
+	case DescHeuristicManhattan:
+		return manhattan
+	case DescHeuristicEuclidean:
+		return euclidean
+	case DescHeuristicOctile:
+		return octile
+	case DescHeuristicChebyshev:
+		return chebyshev
+	}
+	return func(x int, y int) int {
+		return 0
+	}
+}
+
 /**
  *  PF.Heuristic
  *  A collection of heuristic functions.

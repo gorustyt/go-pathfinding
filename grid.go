@@ -128,18 +128,12 @@ type Grid struct {
 	Config *PathFindingConfig
 }
 
-func NewGrid(Width int, Height int, options ...PathFindingConfigOptions) *Grid {
+func NewGridWithConfig(Width int, Height int, cfg *PathFindingConfig) *Grid {
 	if Width <= 0 {
 		Width = 100
 	}
 	if Height <= 0 {
 		Height = 100
-	}
-	cfg := &PathFindingConfig{
-		allowDiagonal: true,
-	}
-	for _, v := range options {
-		v(cfg)
 	}
 	cfg.check()
 	grid := &Grid{
@@ -150,6 +144,14 @@ func NewGrid(Width int, Height int, options ...PathFindingConfigOptions) *Grid {
 	}
 	grid.init()
 	return grid
+}
+
+func NewGrid(Width int, Height int, options ...PathFindingConfigOptions) *Grid {
+	cfg := GetDefaultConfig()
+	for _, v := range options {
+		v(cfg)
+	}
+	return NewGridWithConfig(Width, Height, cfg)
 }
 
 // 初始化地图
@@ -233,7 +235,7 @@ func (grid *Grid) PathFindingRoute(cmd PathFindingType) (cmdFunc PathFindingCmd)
 	case BiDijkstra:
 		cmdFunc = grid.PathFindingBiDijkstra
 	default:
-		panic("error cmd")
+		panic(fmt.Sprintf("error cmd:%v", cmd))
 	}
 	return wrap(cmdFunc)
 }

@@ -12,7 +12,8 @@ func main() {
 	width, height := 900, 900
 	a := app.NewWithID("path-finding")
 	w := a.NewWindow("寻路算法")
-	m := grid_map.NewMap(width, height)
+
+	m := grid_map.NewMap(width, height, w)
 	content := container.NewStack()
 	setView := func() {
 		content.Objects = []fyne.CanvasObject{m}
@@ -20,7 +21,7 @@ func main() {
 	}
 	gridMap := container.NewBorder(
 		nil, nil, nil, nil, content)
-	split := container.NewHSplit(ui.CreateTool(setView), gridMap)
+	split := container.NewHSplit(ui.CreateTool(w, setView, m.(*grid_map.Map).Cfg), gridMap)
 	split.Offset = 0.2
 	w.SetContent(split)
 	w.Resize(fyne.NewSize(float32(width), float32(height)))

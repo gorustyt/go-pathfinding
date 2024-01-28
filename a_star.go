@@ -45,7 +45,7 @@ func (grid *Grid) PathFindingAStar(startX, startY, endX, endY int) (res []*GridN
 			}
 			if !info.Open || ng < info.G {
 				info.G = ng
-				info.H = grid.Config.weight * float64(grid.Config.Heuristic(
+				info.H = grid.Config.Weight * float64(grid.Config.Heuristic(
 					int(math.Abs(float64(info.X)-float64(endX))),
 					int(math.Abs(float64(info.Y)-float64(endY)))))
 				info.F = info.G + info.H
