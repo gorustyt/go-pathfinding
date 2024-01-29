@@ -68,7 +68,7 @@ func (g *grid) MinSize() fyne.Size {
 }
 
 func (g *grid) MouseIn(ev *desktop.MouseEvent) {
-	g.ShowPopUp(ev)
+	//g.ShowPopUp(ev)
 }
 
 func (g *grid) ShowPopUp(ev *desktop.MouseEvent) {
@@ -87,7 +87,7 @@ func (g *grid) ShowPopUp(ev *desktop.MouseEvent) {
 func (g *grid) MouseMoved(ev *desktop.MouseEvent) {}
 
 func (g *grid) MouseOut() {
-	g.popUp.Hide()
+	//g.popUp.Hide()
 }
 
 func (g *grid) Tapped(e *fyne.PointEvent) {

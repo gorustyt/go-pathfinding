@@ -21,6 +21,7 @@ type Heuristic func(x int, y int) int
 
 // 一个格子存储的对象
 type GridNodeInfo struct {
+	trace *DebugTrace
 	*GridNode
 	Parent *GridNodeInfo
 	G      float64
