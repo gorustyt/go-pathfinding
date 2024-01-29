@@ -32,14 +32,6 @@ var (
 	gray        = color.NRGBA{R: 128, G: 128, B: 128, A: 255}
 )
 
-func (g *grid) SetRevWalkAble() {
-	if g.fillColor == gray {
-		g.SetWalkAble(true)
-	} else {
-		g.SetWalkAble(false)
-	}
-}
-
 func (g *grid) SetWalkAble(enable bool) {
 	if !enable {
 		g.fillColor = gray
@@ -68,7 +60,7 @@ func (g *grid) Dragged(ev *fyne.DragEvent) {
 	g.dragEndPos = ev.AbsolutePosition
 }
 func (g *grid) DragEnd() {
-	g.m.OnGridChange(g, g.dragEndPos)
+
 }
 
 func (g *grid) MinSize() fyne.Size {
@@ -80,7 +72,7 @@ func (g *grid) MouseIn(ev *desktop.MouseEvent) {
 }
 
 func (g *grid) ShowPopUp(ev *desktop.MouseEvent) {
-	text := fmt.Sprintf("(%v,%v,%v,%v)", g.g.Position().X, g.g.Position().Y, ev.Position.X, ev.Position.Y)
+	text := fmt.Sprintf("(%v,%v)", g.i, g.j)
 	if g.popUp == nil {
 		// 创建弹出框的内容
 		g.popUpText = widget.NewLabel(text)
@@ -100,8 +92,6 @@ func (g *grid) MouseOut() {
 
 func (g *grid) Tapped(e *fyne.PointEvent) {
 	g.m.OnGridWalkAble(g)
-	//i, j := g.m.GetIndex(e.AbsolutePosition)
-	log.Println("I have Tapped tapped at", e, g.i, g.j, g.fillColor)
 }
 
 func (g *grid) TappedSecondary(e *fyne.PointEvent) {
@@ -113,7 +103,7 @@ func (g *grid) Move(position fyne.Position) {
 }
 
 func (g *grid) Position() fyne.Position {
-	return g.g.Position()
+	return g.base.Position()
 }
 
 func (g *grid) Resize(size fyne.Size) {
@@ -143,8 +133,9 @@ func (g *grid) Refresh() {
 	if g.isHide {
 		g.g.Hide()
 	} else {
-		g.g.Move(fyne.Position{X: g.i * g.scale, Y: g.j * g.scale})
+		g.base.Move(fyne.Position{X: g.i * g.scale, Y: g.j * g.scale})
 		g.g.Resize(fyne.NewSize(g.scale, g.scale))
+		g.base.Resize(fyne.NewSize(g.scale, g.scale))
 	}
 	g.g.Refresh()
 

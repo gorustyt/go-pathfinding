@@ -98,14 +98,21 @@ func (g *Map) OnGridWalkAble(gg *grid) {
 	if gg == g.start || gg == g.end {
 		return
 	}
-	for _, v := range g.obs {
+	j := -1
+	for i, v := range g.obs {
 		if v == gg {
-			return
+			j = i
+			break
 		}
 	}
-	g.obs = append(g.obs, gg)
+	if j != -1 {
+		g.obs = append(g.obs[:j], g.obs[j+1:]...)
+	} else {
+		g.obs = append(g.obs, gg)
+	}
 	g.Refresh()
 }
+
 func (g *Map) OnGridChange(gg *grid, pos fyne.Position) {
 	if !g.isClear {
 		return
