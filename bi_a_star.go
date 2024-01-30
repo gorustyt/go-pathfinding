@@ -1,37 +1,27 @@
 package path_finding
 
 import (
-	"github.com/lirongyangtao/mygo/base"
 	"math"
 )
 
-func (grid *Grid) PathFindingBiAStar(startX, startY, endX, endY int) (res []*GridNodeInfo) {
-	cmp := func(e1 interface{}, e2 interface{}) int32 {
-		if e1.(*GridNodeInfo).F > e2.(*GridNodeInfo).F {
-			return base.E1GenerateE2
-		} else if e1.(*GridNodeInfo).F < e2.(*GridNodeInfo).F {
-			return base.E1LessE2
-		} else {
-			return base.E1EqualE2
-		}
-	}
+func (grid *Grid) PathFindingBiAStar(startX, startY, endX, endY int) (res []*PathPoint) {
 	//开始=================================
-	beginOpenList := base.NewQuadHeap(cmp)
+	beginOpenList := newGridOpenList()
 	startNode := grid.getNodeAt(startX, startY)
-	beginOpenList.Add(startNode.ToGridNodeInfo())
+	beginOpenList.Push(startNode.ToGridNodeInfo())
 	beginGridNodeInfo := map[*GridNode]*GridNodeInfo{}
 	beginClosed := map[*GridNode]struct{}{}
 	//结束=================================
-	EndOpenList := base.NewQuadHeap(cmp)
+	EndOpenList := newGridOpenList()
 
 	endNode := grid.getNodeAt(endX, endY)
-	EndOpenList.Add(endNode.ToGridNodeInfo())
+	EndOpenList.Push(endNode.ToGridNodeInfo())
 	endGridNodeInfo := map[*GridNode]*GridNodeInfo{}
 	EndClosed := map[*GridNode]struct{}{}
 
-	for beginOpenList.Len() != 0 && EndOpenList.Len() != 0 {
+	for !beginOpenList.Empty() && !EndOpenList.Empty() {
 		//从头部开始找
-		nodeByStart := beginOpenList.Pop().(*GridNodeInfo)
+		nodeByStart := beginOpenList.Pop()
 		if nodeByStart.GridNode == endNode { //找到终点了
 			return nodeByStart.GetPaths()
 		}
@@ -40,6 +30,9 @@ func (grid *Grid) PathFindingBiAStar(startX, startY, endX, endY int) (res []*Gri
 		for _, neighbor := range neighbors {
 			if _, ok := beginClosed[neighbor]; ok { //该格子已经被访问过了
 				continue
+			}
+			if !grid.TracePath(neighbor) {
+				return
 			}
 			ng := nodeByStart.G
 			if neighbor.X-nodeByStart.X == 0 || neighbor.Y-nodeByStart.Y == 0 {
@@ -62,13 +55,15 @@ func (grid *Grid) PathFindingBiAStar(startX, startY, endX, endY int) (res []*Gri
 			}
 			if !info.Open {
 				info.Open = true
-				beginOpenList.Add(info)
+				beginOpenList.Push(info)
+			} else {
+				beginOpenList.Update(info)
 			}
 
 		}
 		//从尾部开始找
 
-		NodeByEnd := EndOpenList.Pop().(*GridNodeInfo)
+		NodeByEnd := EndOpenList.Pop()
 		if NodeByEnd.GridNode == startNode { //找到终点了
 			return NodeByEnd.GetPaths()
 		}
@@ -77,6 +72,9 @@ func (grid *Grid) PathFindingBiAStar(startX, startY, endX, endY int) (res []*Gri
 		for _, neighbor := range neighbors {
 			if _, ok := EndClosed[neighbor]; ok { //该格子已经被访问过了
 				continue
+			}
+			if !grid.TracePath(neighbor) {
+				return
 			}
 			ng := NodeByEnd.G
 			if neighbor.X-NodeByEnd.X == 0 || neighbor.Y-NodeByEnd.Y == 0 {
@@ -99,7 +97,9 @@ func (grid *Grid) PathFindingBiAStar(startX, startY, endX, endY int) (res []*Gri
 			}
 			if !info.Open {
 				info.Open = true
-				EndOpenList.Add(info)
+				EndOpenList.Push(info)
+			} else {
+				EndOpenList.Update(info)
 			}
 
 		}

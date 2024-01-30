@@ -11,14 +11,11 @@ import (
 )
 
 type grid struct {
-	base        widget.BaseWidget
+	widget.BaseWidget
 	g           *canvas.Rectangle
 	i, j        float32
-	scale       float32
-	isHide      bool
 	fillColor   color.NRGBA
 	strokeColor color.NRGBA
-	offset      fyne.Position
 	m           *Map
 	dragEndPos  fyne.Position
 
@@ -30,6 +27,11 @@ var (
 	strokeColor = color.NRGBA{R: 255, G: 120, B: 0, A: 255}
 	white       = color.NRGBA{R: 255, G: 255, B: 255, A: 255}
 	gray        = color.NRGBA{R: 128, G: 128, B: 128, A: 255}
+	blue        = color.NRGBA{B: 255, A: 255}
+	yellow      = color.NRGBA{R: 255, G: 255, A: 150}
+	green       = color.NRGBA{G: 255, A: 255}
+	red         = color.NRGBA{R: 255, A: 255}
+	tarquoise   = color.NRGBA{R: 64, G: 224, B: 208, A: 255}
 )
 
 func (g *grid) SetWalkAble(enable bool) {
@@ -41,34 +43,43 @@ func (g *grid) SetWalkAble(enable bool) {
 		g.strokeColor = white
 	}
 }
+func (g *grid) SetJumpPointPath() {
+	g.fillColor = tarquoise
+}
+func (g *grid) SetPeekPath() {
+	g.fillColor = yellow
+}
 func (g *grid) SetStart() {
-	g.fillColor = color.NRGBA{G: 255, A: 255}
+	g.fillColor = green
 	g.strokeColor = strokeColor
 }
 
 func (g *grid) SetEnd() {
-	g.fillColor = color.NRGBA{R: 255, A: 255}
+	g.fillColor = red
 	g.strokeColor = strokeColor
 }
 
 func (g *grid) SetPath() {
-	g.fillColor = color.NRGBA{B: 255, A: 255}
+	g.fillColor = blue
 	g.strokeColor = strokeColor
 }
 
 func (g *grid) Dragged(ev *fyne.DragEvent) {
-	g.dragEndPos = ev.AbsolutePosition
+	if g.m.draggedEnd == nil {
+		g.m.draggedEnd = g
+	}
 }
-func (g *grid) DragEnd() {
 
+func (g *grid) DragEnd() {
+	g.m.draggedEnd = nil
 }
 
 func (g *grid) MinSize() fyne.Size {
-	return fyne.Size{Width: g.scale, Height: g.scale}
+	return fyne.Size{Width: g.m.GetScale(), Height: g.m.GetScale()}
 }
 
 func (g *grid) MouseIn(ev *desktop.MouseEvent) {
-	//g.ShowPopUp(ev)
+	g.m.OnGridMouseIn(g)
 }
 
 func (g *grid) ShowPopUp(ev *desktop.MouseEvent) {
@@ -98,45 +109,19 @@ func (g *grid) TappedSecondary(e *fyne.PointEvent) {
 	log.Println("I have been right tapped at", e, g.i, g.j)
 }
 
-func (g *grid) Move(position fyne.Position) {
-	g.g.Move(position)
-}
-
-func (g *grid) Position() fyne.Position {
-	return g.base.Position()
-}
-
 func (g *grid) Resize(size fyne.Size) {
 	g.g.Resize(size)
 }
 
 func (g *grid) Size() fyne.Size {
-	return fyne.Size{Width: g.scale, Height: g.scale}
-}
-
-func (g *grid) Hide() {
-	g.isHide = true
-	g.Refresh()
-}
-
-func (g *grid) Visible() bool {
-	return !g.isHide
-}
-
-func (g *grid) Show() {
-	g.isHide = false
-	g.Refresh()
+	return fyne.Size{Width: g.m.GetScale(), Height: g.m.GetScale()}
 }
 
 func (g *grid) Refresh() {
 	g.g.FillColor = g.fillColor
-	if g.isHide {
-		g.g.Hide()
-	} else {
-		g.base.Move(fyne.Position{X: g.i * g.scale, Y: g.j * g.scale})
-		g.g.Resize(fyne.NewSize(g.scale, g.scale))
-		g.base.Resize(fyne.NewSize(g.scale, g.scale))
-	}
+	g.Move(fyne.Position{X: g.i * g.m.GetScale(), Y: g.j * g.m.GetScale()})
+	g.g.Resize(fyne.NewSize(g.m.GetScale(), g.m.GetScale()))
+	g.Resize(fyne.NewSize(g.m.GetScale(), g.m.GetScale()))
 	g.g.Refresh()
 
 }
@@ -146,8 +131,8 @@ func (g *grid) CreateRenderer() fyne.WidgetRenderer {
 }
 
 func newGrid(i, j int, scale float32) *grid {
-	n := &grid{i: float32(i), j: float32(j), scale: scale, isHide: false, fillColor: white}
-	n.base.ExtendBaseWidget(n)
+	n := &grid{i: float32(i), j: float32(j), fillColor: white}
+	n.ExtendBaseWidget(n)
 	return n
 }
 

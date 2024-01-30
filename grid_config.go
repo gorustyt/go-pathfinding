@@ -1,7 +1,7 @@
 package path_finding
 
 type PathFindingType string
-type PathFindingCmd func(startX, startY, endX, endY int) (res []*GridNodeInfo)
+type PathFindingCmd func(startX, startY, endX, endY int) (res []*PathPoint)
 
 const (
 	DescAStar               = "AStar"
@@ -38,10 +38,8 @@ func GetPathFindingType(dest string, cfg *PathFindingConfig) PathFindingType {
 			return BiDijkstra
 		}
 		return Dijkstra
-	case DescJumpPointSearch:
+	case DescJumpPointSearch, DescOrthogonalJumpPoint:
 		return JumpPoint
-	case DescOrthogonalJumpPoint:
-
 	case DescTrace:
 	}
 	return Undefined
@@ -69,7 +67,8 @@ type PathFindingConfig struct {
 	DiagonalMovement DiagonalMovement //对角线行走规则
 	Heuristic        Heuristic        //估算函数
 	DontCrossCorners bool             //是否跨越障碍物
-	*IdAStarConfig
+	IdAStarTimeLimit int64            //最大搜索秒数，超过这个值也视为没有找到
+	Trace            DebugTrace
 }
 
 func GetDefaultConfig() *PathFindingConfig {
@@ -77,10 +76,6 @@ func GetDefaultConfig() *PathFindingConfig {
 		AllowDiagonal: true,
 		Heuristic:     manhattan,
 	}
-}
-
-type IdAStarConfig struct {
-	IdAStarTimeLimit int64 //最大搜索秒数，超过这个值也视为没有找到
 }
 
 func (cfg *PathFindingConfig) check() {
@@ -106,10 +101,8 @@ func (cfg *PathFindingConfig) check() {
 	} else {
 		cfg.Heuristic = octile
 	}
-	if cfg.IdAStarConfig == nil {
-		cfg.IdAStarConfig = &IdAStarConfig{
-			IdAStarTimeLimit: 10,
-		}
+	if cfg.IdAStarTimeLimit == 0 {
+		cfg.IdAStarTimeLimit = 10
 	}
 
 }

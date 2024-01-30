@@ -1,28 +1,19 @@
 package path_finding
 
 import (
-	"github.com/lirongyangtao/mygo/base"
 	"math"
 )
 
 // A*算法
-func (grid *Grid) PathFindingAStar(startX, startY, endX, endY int) (res []*GridNodeInfo) {
-	openList := base.NewQuadHeap(func(e1 interface{}, e2 interface{}) int32 {
-		if e1.(*GridNodeInfo).F > e2.(*GridNodeInfo).F {
-			return base.E1GenerateE2
-		} else if e1.(*GridNodeInfo).F < e2.(*GridNodeInfo).F {
-			return base.E1LessE2
-		} else {
-			return base.E1EqualE2
-		}
-	})
+func (grid *Grid) PathFindingAStar(startX, startY, endX, endY int) (res []*PathPoint) {
+	openList := newGridOpenList()
 	closed := map[*GridNode]struct{}{}
 	gridNodeInfo := map[*GridNode]*GridNodeInfo{}
 	startNode := grid.getNodeAt(startX, startY)
-	openList.Add(startNode.ToGridNodeInfo())
+	openList.Push(startNode.ToGridNodeInfo())
 	endNode := grid.getNodeAt(endX, endY)
-	for openList.Len() != 0 {
-		node := openList.Pop().(*GridNodeInfo)
+	for !openList.Empty() {
+		node := openList.Pop()
 		if node.GridNode == endNode { //找到终点了
 			return node.GetPaths()
 		}
@@ -31,6 +22,9 @@ func (grid *Grid) PathFindingAStar(startX, startY, endX, endY int) (res []*GridN
 		for _, neighbor := range neighbors {
 			if _, ok := closed[neighbor]; ok { //该格子已经被访问过了
 				continue
+			}
+			if !grid.TracePath(neighbor) {
+				return
 			}
 			ng := node.G
 			if neighbor.X-node.X == 0 || neighbor.Y-node.Y == 0 {
@@ -53,7 +47,9 @@ func (grid *Grid) PathFindingAStar(startX, startY, endX, endY int) (res []*GridN
 			}
 			if !info.Open {
 				info.Open = true
-				openList.Add(info)
+				openList.Push(info)
+			} else {
+				openList.Update(info)
 			}
 
 		}

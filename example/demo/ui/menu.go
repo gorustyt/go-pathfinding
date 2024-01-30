@@ -18,8 +18,6 @@ type OptionsMenu struct {
 	options      *widget.CheckGroup
 	optionsLabel *widget.Label
 
-	visualizeRecursion *widget.CheckGroup
-
 	weight      *fyne.Container
 	secondLimit *fyne.Container
 }
@@ -29,7 +27,6 @@ func NewOptionsMenu(cfg *grid_map.Config) fyne.CanvasObject {
 	o.BaseWidget.ExtendBaseWidget(o)
 	o.initHeuristic()
 	o.initOptions()
-	o.initVisualizeRecursion()
 	o.initEntryWeight()
 	o.initSecondLimit()
 	return o
@@ -71,7 +68,6 @@ func (m *OptionsMenu) Refresh() {
 		m.weight.Show()
 
 		m.secondLimit.Hide()
-		m.visualizeRecursion.Hide()
 	case path_finding.DescIdaStar:
 		m.heuristicLabel.Show()
 		m.heuristic.Show()
@@ -87,7 +83,6 @@ func (m *OptionsMenu) Refresh() {
 
 		m.weight.Show()
 		m.secondLimit.Show()
-		m.visualizeRecursion.Show()
 	case path_finding.DescBestFirstSearch:
 		m.heuristicLabel.Show()
 		m.heuristic.Show()
@@ -102,7 +97,6 @@ func (m *OptionsMenu) Refresh() {
 		m.options.Show()
 		m.weight.Hide()
 		m.secondLimit.Hide()
-		m.visualizeRecursion.Hide()
 	case path_finding.DescDijkstra, path_finding.DescBreadthFirstSearch:
 		m.heuristicLabel.Hide()
 		m.heuristic.Hide()
@@ -119,7 +113,6 @@ func (m *OptionsMenu) Refresh() {
 
 		m.weight.Hide()
 		m.secondLimit.Hide()
-		m.visualizeRecursion.Hide()
 	case path_finding.DescJumpPointSearch, path_finding.DescOrthogonalJumpPoint:
 		m.heuristicLabel.Show()
 		m.heuristic.Show()
@@ -128,7 +121,6 @@ func (m *OptionsMenu) Refresh() {
 		m.weight.Hide()
 		m.secondLimit.Hide()
 
-		m.visualizeRecursion.Show()
 	case path_finding.DescTrace:
 		m.heuristicLabel.Show()
 		m.heuristic.Show()
@@ -143,7 +135,6 @@ func (m *OptionsMenu) Refresh() {
 		m.options.Show()
 		m.weight.Hide()
 		m.secondLimit.Hide()
-		m.visualizeRecursion.Hide()
 	}
 }
 
@@ -166,15 +157,6 @@ func (m *OptionsMenu) initOptions() {
 	}
 	m.options = g
 	m.optionsLabel = widget.NewLabel("Options")
-}
-
-func (m *OptionsMenu) initVisualizeRecursion() {
-	g := widget.NewCheckGroup([]string{"Visualize recursion"}, func(strings []string) {
-
-	})
-	g.Selected = []string{"Visualize recursion"}
-	m.visualizeRecursion = g
-
 }
 
 func (m *OptionsMenu) initEntryWeight() {
@@ -234,7 +216,6 @@ func newOptionsMenuRender(menu *OptionsMenu) fyne.WidgetRenderer {
 			menu.options,
 			menu.weight,
 			menu.secondLimit,
-			menu.visualizeRecursion,
 		),
 	}
 	return m

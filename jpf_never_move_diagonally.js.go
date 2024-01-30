@@ -54,6 +54,9 @@ func (grid *Grid) jPFNeverMoveDiagonallyJump(x, y, px, py int, endNode *GridNode
 	if !grid.isWalkableAt(x, y) {
 		return nil
 	}
+	if !grid.TracePath(grid.getNodeAt(x, y)) {
+		return
+	}
 	if grid.getNodeAt(x, y) == endNode {
 		return grid.getNodeAt(x, y)
 	}

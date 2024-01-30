@@ -1,22 +1,19 @@
 package path_finding
 
 import (
-	"fmt"
 	"math"
 	"time"
 )
 
-func (grid *Grid) idAStartSearch(heuristic func(a, b *GridNodeInfo) int, startTime int64, end *GridNodeInfo, node *GridNodeInfo, g float64, cutoff float64, route map[int][2]int, depth int, testMap *[]string, nodeInfoGet func(node *GridNode) *GridNodeInfo) (*GridNodeInfo, float64) {
+func (grid *Grid) idAStartSearch(heuristic func(a, b *GridNodeInfo) int, startTime int64, end *GridNodeInfo, node *GridNodeInfo, g float64, cutoff float64, nodeInfoGet func(node *GridNode) *GridNodeInfo) (*GridNodeInfo, float64) {
+	if !grid.TracePath(node.GridNode) {
+		return nil, 0
+	}
 	if grid.Config.IdAStarTimeLimit > 0 && time.Now().UnixMilli()-startTime > grid.Config.IdAStarTimeLimit*1000 {
 
 		return nil, 0
 	}
 	f := g + float64(heuristic(node, end.ToGridNodeInfo()))*grid.Config.Weight
-	//============打印遍历到的节点位置
-	arr := grid.getPrintMap()
-	arr[node.X][node.Y] = "x"
-	*testMap = append(*testMap, grid.print(arr)+fmt.Sprintf("f:=%v,cutoff=%v", f, cutoff))
-	//============
 	if f > cutoff {
 		return node, f
 	}
@@ -27,31 +24,30 @@ func (grid *Grid) idAStartSearch(heuristic func(a, b *GridNodeInfo) int, startTi
 		return math.Sqrt2
 	}
 	if node.GridNode == end.GridNode {
-		route[depth] = [2]int{node.X, node.Y}
 		return node, f
 	}
-	min := math.MaxFloat64
+
+	minValue := math.MaxFloat64
 	neighbours := grid.getNeighbors(node.GridNode, grid.Config.DiagonalMovement)
 	for _, neighbour := range neighbours {
-		findNode, t := grid.idAStartSearch(heuristic, startTime, end, nodeInfoGet(neighbour), g+cost(node, nodeInfoGet(neighbour)), cutoff, route, depth+1, testMap, nodeInfoGet)
+		findNode, t := grid.idAStartSearch(heuristic, startTime, end, nodeInfoGet(neighbour), g+cost(node, nodeInfoGet(neighbour)), cutoff, nodeInfoGet)
 		if findNode == nil {
 			continue
 		}
 		if findNode.GridNode == end.GridNode {
 			nodeInfoGet(neighbour).Parent = node
-			route[depth] = [2]int{findNode.X, findNode.Y}
 			return findNode, t
 		}
-		if t < min {
-			min = t
+		if t < minValue {
+			minValue = t
 		}
 	}
-	if min == math.MaxFloat64 {
+	if minValue == math.MaxFloat64 {
 		panic(any("xxx not sure"))
 	}
-	return node, min
+	return node, minValue
 }
-func (grid *Grid) PathFindingIdaStar(startX, startY, endX, endY int) (res []*GridNodeInfo) {
+func (grid *Grid) PathFindingIdaStar(startX, startY, endX, endY int) (res []*PathPoint) {
 	/**
 	 * IDA* search implementation.
 	 *
@@ -85,13 +81,10 @@ func (grid *Grid) PathFindingIdaStar(startX, startY, endX, endY int) (res []*Gri
 		return info
 	}
 	cutOff := float64(heuristic(nodeInfoGet(start), nodeInfoGet(end)))
-
-	route := map[int][2]int{}
-	testMap := []string{}
 	var endNodeInfo *GridNodeInfo
 
 	for {
-		node, t := grid.idAStartSearch(heuristic, startTime, nodeInfoGet(end), nodeInfoGet(start), 0, cutOff, route, 0, &testMap, nodeInfoGet)
+		node, t := grid.idAStartSearch(heuristic, startTime, nodeInfoGet(end), nodeInfoGet(start), 0, cutOff, nodeInfoGet)
 		if node == nil { //没有找到
 			break
 		}

@@ -1,7 +1,6 @@
 package grid_map
 
 import (
-	"fmt"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/data/binding"
@@ -18,6 +17,14 @@ const (
 	maxOneGird = 120
 )
 
+type mapStatus int
+
+const (
+	mapStatusNone mapStatus = iota
+	mapStatusPathFinding
+	mapStatusPause
+)
+
 type Map struct {
 	win     fyne.Window
 	base    widget.BaseWidget
@@ -31,68 +38,171 @@ type Map struct {
 	scale   float32          //缩放
 	lock    sync.Mutex
 
-	start *grid
-	end   *grid
-	paths []*grid
-	obs   []*grid
+	start     *grid
+	end       *grid
+	paths     []*grid
+	peekPaths []*grid
+	obs       []*grid
 
-	Cfg *Config
-
-	isClear bool
+	Cfg        *Config
+	trace      path_finding.DebugTrace
+	traceLock  sync.Mutex
+	state      mapStatus
+	draggedEnd *grid
 }
 
 func (g *Map) OnClear() {
-	fmt.Println("on_clean")
-	g.clear()
+	if g.state == mapStatusNone {
+		return
+	}
+	g.state = mapStatusNone
+	for _, v := range g.obs {
+		v.SetWalkAble(true)
+	}
+
+	g.obs = g.obs[:0]
+	g.clearAllPaths()
+
+	g.traceLock.Lock()
+	if g.trace != nil {
+		g.trace.Exit()
+		g.trace = nil
+	}
+
+	g.traceLock.Unlock()
+
 	g.Refresh()
 }
 
-func (g *Map) clear() {
-
-	for _, v := range g.obs {
-		v.SetWalkAble(true)
+func (g *Map) OnGridMouseIn(v *grid) {
+	if g.state != mapStatusNone || g.draggedEnd == nil {
+		return
 	}
+	if g.draggedEnd == g.start {
+		g.start.SetWalkAble(true)
+		g.start = v
+		g.draggedEnd = v
+		g.Refresh()
+	}
+	if g.draggedEnd == g.end {
+		g.end.SetWalkAble(true)
+		g.end = v
+		g.draggedEnd = v
+		g.Refresh()
+	}
+}
+func (g *Map) clearPaths() {
 	for _, v := range g.paths {
 		v.SetWalkAble(true)
 	}
-	g.obs = g.obs[:0]
 	g.paths = g.paths[:0]
-	g.isClear = true
+}
+func (g *Map) clearPeekPaths() {
+	for _, v := range g.peekPaths {
+		v.SetWalkAble(true)
+	}
+	g.peekPaths = g.peekPaths[:0]
+}
+
+func (g *Map) clearAllPaths() {
+	g.clearPaths()
+	g.clearPeekPaths()
 }
 
 func (g *Map) OnStart() {
-	fmt.Println("on_start")
-	g.isClear = false
-	g.paths = g.paths[:0]
+	if g.state == mapStatusPathFinding {
+		return
+	} else if g.state == mapStatusPause {
+		g.state = mapStatusPathFinding
+		g.traceLock.Lock()
+		if g.trace != nil {
+			g.trace.Start()
+		}
+		g.traceLock.Unlock()
+		return
+	}
+	g.state = mapStatusPathFinding
+	g.clearAllPaths()
 	gw, gh := g.GetGridSize()
 	t, c := g.Cfg.GetPathFindingConfig()
-	m := path_finding.NewGridWithConfig(gw, gh, &c)
-	for _, v := range g.obs {
-		m.SetWalkableAt(int(v.i), int(v.j), false)
-	}
-	starX, startY := int(g.start.i), int(g.start.j)
-	endX, endY := int(g.end.i), int(g.end.j)
-	paths := m.PathFindingRoute(t)(starX, startY, endX, endY)
+
+	go func() {
+		m := path_finding.NewGridWithConfig(gw, gh, &c)
+		g.traceLock.Lock()
+		c.Trace = path_finding.NewDebugTrace()
+		g.trace = c.Trace
+		g.traceLock.Unlock()
+		c.Trace.SetPathHandle(func(v *path_finding.TracePoint) {
+			gg := g.grids[v.X][v.Y]
+			if gg == g.start || gg == g.end {
+				return
+			}
+			if v.IsJumpPoint {
+
+			} else {
+				for _, tmp := range g.peekPaths {
+					if tmp == gg {
+						return
+					}
+				}
+				for _, tmp := range g.obs {
+					if tmp == gg {
+						return
+					}
+				}
+				g.peekPaths = append(g.peekPaths, gg)
+			}
+			g.Refresh()
+		})
+		for _, v := range g.obs {
+			m.SetWalkableAt(int(v.i), int(v.j), false)
+		}
+		starX, startY := int(g.start.i), int(g.start.j)
+		endX, endY := int(g.end.i), int(g.end.j)
+		paths := m.PathFindingRoute(t)(starX, startY, endX, endY)
+		g.traceLock.Lock()
+		if g.trace != nil {
+			g.trace.Exit()
+			g.trace.Wait()
+		}
+		g.trace = nil
+		g.traceLock.Unlock()
+		g.renderPaths(paths)
+		log.Printf("path-finding :%v exit....", t)
+	}()
+	g.Refresh()
+}
+
+func (g *Map) renderPaths(paths []*path_finding.PathPoint) {
+	g.clearPaths()
 	for _, v := range paths {
 		gg := g.grids[v.X][v.Y]
 		if gg == g.start || gg == g.end {
 			continue
 		}
+		for i, tmp := range g.peekPaths {
+			if tmp == gg {
+				g.peekPaths = append(g.peekPaths[:i], g.peekPaths[i+1:]...)
+			}
+		}
 		g.paths = append(g.paths, gg)
 	}
 	g.Refresh()
 }
-
 func (g *Map) OnPause() {
-	fmt.Println("on_pause")
-}
-
-func (g *Map) OnStop() {
-	fmt.Println("on_stop")
+	if g.state != mapStatusPathFinding {
+		return
+	}
+	g.state = mapStatusPause
+	g.traceLock.Lock()
+	if g.trace != nil {
+		g.trace.Pause()
+	}
+	g.traceLock.Unlock()
 }
 
 func (g *Map) OnGridWalkAble(gg *grid) {
-	if !g.isClear {
+	if g.state != mapStatusNone {
 		return
 	}
 	if gg == g.start || gg == g.end {
@@ -114,7 +224,7 @@ func (g *Map) OnGridWalkAble(gg *grid) {
 }
 
 func (g *Map) OnGridChange(gg *grid, pos fyne.Position) {
-	if !g.isClear {
+	if g.state != mapStatusNone {
 		return
 	}
 	i, j := g.GetIndex(pos)
@@ -141,13 +251,11 @@ func (g *Map) SetEndPosition(pos fyne.Position) {
 
 func (g *Map) MinSize() fyne.Size {
 	gw, gh := g.GetGridSize()
-	return fyne.Size{float32(gw) * minOneGird, float32(gh) * minOneGird}
+	return fyne.Size{Width: float32(gw) * minOneGird, Height: float32(gh) * minOneGird}
 }
 
 func (g *Map) Dragged(ev *fyne.DragEvent) {
-	//offsetX := float32(int(ev.Dragged.DX) % int(g.oneGird))
-	//offsetY := float32(int(ev.Dragged.DY) % int(g.oneGird))
-	//g.offset = g.offset.SubtractXY(offsetX, offsetY)
+
 }
 func (g *Map) DragEnd() {
 	g.Refresh()
@@ -156,8 +264,7 @@ func (g *Map) DragEnd() {
 func (g *Map) DoubleTapped(ev *fyne.PointEvent) {
 	x, y := g.GetIndex(ev.AbsolutePosition)
 	log.Println("I have been double tapped at", ev.AbsolutePosition.X, ev.AbsolutePosition.Y, x, y)
-	//g.ShowPopUp()
-	//g.m.OnGridWalkAble(g)
+
 }
 
 func (g *Map) Scrolled(ev *fyne.ScrollEvent) {
@@ -167,7 +274,6 @@ func (g *Map) Scrolled(ev *fyne.ScrollEvent) {
 		g.scale -= g.scale * .5
 	}
 
-	fmt.Println("scale===", g.scale)
 	if g.scale <= minOneGird/g.oneGird {
 		g.scale = minOneGird / g.oneGird
 	}
@@ -198,7 +304,9 @@ func (g *Map) Hide() {
 	g.hide = true
 	g.Refresh()
 }
-
+func (g *Map) GetScale() float32 {
+	return g.scale * g.oneGird
+}
 func (g *Map) Visible() bool {
 	return !g.hide
 }
@@ -211,6 +319,10 @@ func (g *Map) drawMap() {
 	}
 	for _, v := range g.paths {
 		v.SetPath()
+	}
+
+	for _, v := range g.peekPaths {
+		v.SetPeekPath()
 	}
 
 	gw, gh := g.GetGridSize()
@@ -229,8 +341,6 @@ func (g *Map) drawMap() {
 				g.cols[i][j].Refresh()
 			}
 			if i < gw && j < gh {
-				g.grids[i][j].scale = g.oneGird * g.scale
-				g.grids[i][j].offset = g.offset
 				//画格子
 				g.grids[i][j].Refresh()
 			}
@@ -263,9 +373,8 @@ func NewMap(w, h int, win fyne.Window) fyne.CanvasObject {
 		win:     win,
 		h:       h,
 		scale:   1,
-		isClear: true,
 		oneGird: 40}
-	g.Cfg = NewConfig(g.OnStart, g.OnPause, g.OnStop, g.OnClear)
+	g.Cfg = NewConfig(g.OnStart, g.OnPause, g.OnClear)
 	g.base.ExtendBaseWidget(g)
 	maxW, maxH := g.GetGridSize()
 	g.rows = make([][]*canvas.Line, maxW+1)
@@ -347,18 +456,16 @@ type Config struct {
 
 	OnStart func()
 	OnPause func()
-	OnStop  func()
 	OnClear func()
 }
 
 func NewConfig(OnStart func(),
 	OnPause func(),
-	OnStop func(), OnClear func()) *Config {
+	OnClear func()) *Config {
 	return &Config{
-		OnStop:            OnStop,
+		OnClear:           OnClear,
 		OnPause:           OnPause,
 		OnStart:           OnStart,
-		OnClear:           OnClear,
 		Weight:            binding.NewString(),
 		SecondLimit:       binding.NewString(),
 		PathFindingConfig: path_finding.GetDefaultConfig(),

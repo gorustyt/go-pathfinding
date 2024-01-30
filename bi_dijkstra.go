@@ -1,6 +1,6 @@
 package path_finding
 
-func (grid *Grid) PathFindingBiDijkstra(startX, startY, endX, endY int) (res []*GridNodeInfo) {
+func (grid *Grid) PathFindingBiDijkstra(startX, startY, endX, endY int) (res []*PathPoint) {
 	old := grid.Config.Heuristic
 	grid.Config.Heuristic = func(x int, y int) int {
 		return 0

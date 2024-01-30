@@ -2,7 +2,7 @@ package path_finding
 
 import "github.com/lirongyangtao/mygo/base"
 
-func (grid *Grid) PathFindingBreadthFirst(startX, startY, endX, endY int) (res []*GridNodeInfo) {
+func (grid *Grid) PathFindingBreadthFirst(startX, startY, endX, endY int) (res []*PathPoint) {
 	openList := base.NewSimpleQueue()
 	startNode := grid.getNodeAt(startX, startY)
 	openList.Offer(startNode.ToGridNodeInfo())

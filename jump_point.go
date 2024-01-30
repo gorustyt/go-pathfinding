@@ -1,11 +1,10 @@
 package path_finding
 
 import (
-	"github.com/lirongyangtao/mygo/base"
 	"math"
 )
 
-func (grid *Grid) PathFindingJumpPoint(startX, startY, endX, endY int) (res []*GridNodeInfo) {
+func (grid *Grid) PathFindingJumpPoint(startX, startY, endX, endY int) (res []*PathPoint) {
 	type jumpFunc func(startX, startY, endX, endY int, endNode *GridNode) (jumpPoint *GridNode)
 	type findNeighborsFunc func(node *GridNodeInfo) (neighbors []*GridNode)
 	var jump jumpFunc = func(startX, startY, endX, endY int, endNode *GridNode) (jumpPoint *GridNode) { panic("no impl") }
@@ -29,18 +28,10 @@ func (grid *Grid) PathFindingJumpPoint(startX, startY, endX, endY int) (res []*G
 	heuristic := grid.Config.Heuristic
 	startNode := grid.getNodeAt(startX, startY)
 	endNode := grid.getNodeAt(endX, endY)
-	openList := base.NewQuadHeap(func(e1 interface{}, e2 interface{}) int32 {
-		if e1.(*GridNodeInfo).F > e2.(*GridNodeInfo).F {
-			return base.E1GenerateE2
-		} else if e1.(*GridNodeInfo).F < e2.(*GridNodeInfo).F {
-			return base.E1LessE2
-		} else {
-			return base.E1EqualE2
-		}
-	})
+	openList := newGridOpenList()
 	startInfo := startNode.ToGridNodeInfo()
 	gridNodeInfo[startNode] = startInfo
-	openList.Add(startInfo) //起点也是跳点
+	openList.Push(startInfo) //起点也是跳点
 
 	identifySuccessors := func(node *GridNodeInfo) {
 		x, y := node.X, node.Y
@@ -50,7 +41,9 @@ func (grid *Grid) PathFindingJumpPoint(startX, startY, endX, endY int) (res []*G
 			if jumpPoint == nil {
 				continue
 			}
-
+			if !grid.TraceJumpPointPath(jumpPoint) {
+				return
+			}
 			if _, ok := closed[jumpPoint]; ok {
 				continue
 			}
@@ -72,24 +65,19 @@ func (grid *Grid) PathFindingJumpPoint(startX, startY, endX, endY int) (res []*G
 			}
 			if !jumpNode.Open {
 				jumpNode.Open = true
-				openList.Add(jumpNode)
+				openList.Push(jumpNode)
+			} else {
+				openList.Update(jumpNode)
 			}
 		}
 
 	}
-	for openList.Len() != 0 {
-		node := openList.Pop().(*GridNodeInfo)
+	for !openList.Empty() {
+		node := openList.Pop()
 		closed[node.GridNode] = struct{}{}
 
 		if node.GridNode == endNode {
-			return node.ExpandPath(node.GetPaths(), func(x, y int) *GridNodeInfo {
-				pathNode := grid.getNodeAt(x, y)
-				info := gridNodeInfo[pathNode]
-				if info == nil {
-					info = pathNode.ToGridNodeInfo()
-				}
-				return info
-			})
+			return node.ExpandPath(node.GetPaths())
 		}
 
 		identifySuccessors(node)

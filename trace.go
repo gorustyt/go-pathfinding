@@ -5,48 +5,90 @@ import (
 	"time"
 )
 
-type DebugTrace struct {
-	ch       chan [2]float32
-	pause    bool
-	exit     func()
-	paths    [][2]float32
-	interval time.Duration
+type PathPoint struct {
+	X, Y int
 }
 
-func NewDebugTrace() *DebugTrace {
-	t := &DebugTrace{
-		interval: 100 * time.Millisecond,
-		ch:       make(chan [2]float32)}
+type TracePoint struct {
+	PathPoint
+	IsJumpPoint bool
+}
+
+type DebugTrace interface {
+	SetPathHandle(fn func(v *TracePoint))
+	TracePath(x, y int, isJumpPoint bool) bool
+	Wait()
+	Exit()
+	Start()
+	Pause()
+}
+type debugTrace struct {
+	closeCh  chan struct{}
+	ch       chan *TracePoint
+	pause    bool
+	exit     func()
+	interval time.Duration
+	fn       func(v *TracePoint)
+
+	wg sync.WaitGroup
+}
+
+func NewDebugTrace() DebugTrace {
+	t := &debugTrace{
+		interval: 10 * time.Millisecond,
+		closeCh:  make(chan struct{}),
+		ch:       make(chan *TracePoint)}
 	t.exit = sync.OnceFunc(func() {
-		close(t.ch)
+		close(t.closeCh)
 	})
+	t.wg.Add(1)
+	go t.run()
 	return t
 }
 
-func (trace *DebugTrace) Send(pos [2]float32) {
-	trace.ch <- pos
+func (trace *debugTrace) SetPathHandle(fn func(v *TracePoint)) {
+	trace.fn = fn
 }
 
-func (trace *DebugTrace) GetPaths() [][2]float32 {
-	return trace.paths
+func (trace *debugTrace) TracePath(x, y int, isJumpPoint bool) bool {
+	select {
+	case <-trace.closeCh:
+		close(trace.ch)
+		return false
+	case trace.ch <- &TracePoint{
+		IsJumpPoint: isJumpPoint,
+		PathPoint: PathPoint{
+			X: x,
+			Y: y,
+		}}:
+	}
+	return true
 }
 
-func (trace *DebugTrace) Exit() {
+func (trace *debugTrace) Wait() {
+	trace.wg.Wait()
+}
+func (trace *debugTrace) Exit() {
 	trace.exit()
-	trace.paths = nil
 }
-func (trace *DebugTrace) Start() {
+func (trace *debugTrace) Start() {
 	trace.pause = false
 }
-func (trace *DebugTrace) Pause() {
+func (trace *debugTrace) Pause() {
 	trace.pause = true
 }
 
-func (trace *DebugTrace) run() {
-	timer := time.NewTimer(trace.interval)
-	defer timer.Stop()
+func (trace *debugTrace) run() {
+	timer := time.NewTicker(trace.interval)
+	defer func() {
+		timer.Stop()
+		trace.wg.Done()
+	}()
 	for {
 		select {
+		case <-trace.closeCh:
+			close(trace.ch)
+			return
 		case <-timer.C:
 			if trace.pause {
 				continue
@@ -56,7 +98,11 @@ func (trace *DebugTrace) run() {
 				if !ok {
 					return
 				}
-				trace.paths = append(trace.paths, v)
+				if trace.fn != nil {
+					trace.fn(v)
+				}
+			default:
+
 			}
 		}
 

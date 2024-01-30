@@ -1,25 +1,23 @@
 package path_finding
 
-import "github.com/lirongyangtao/mygo/base"
-
-func (grid *Grid) PathFindingBiBreadthFirst(startX, startY, endX, endY int) (res []*GridNodeInfo) {
+func (grid *Grid) PathFindingBiBreadthFirst(startX, startY, endX, endY int) (res []*PathPoint) {
 	//=====================================开始============================
-	beginOpenList := base.NewSimpleQueue()
+	beginOpenList := newQueue()
 	startNode := grid.getNodeAt(startX, startY)
-	beginOpenList.Offer(startNode.ToGridNodeInfo())
+	beginOpenList.PushBack(startNode.ToGridNodeInfo())
 	beginGridNodeInfo := map[*GridNode]*GridNodeInfo{}
 
 	beginClosed := map[*GridNodeInfo]struct{}{}
 	//=====================================结束============================
-	endOpenList := base.NewSimpleQueue()
+	endOpenList := newQueue()
 	endNode := grid.getNodeAt(endX, endY)
-	endOpenList.Offer(endNode.ToGridNodeInfo())
+	endOpenList.PushBack(endNode.ToGridNodeInfo())
 
 	endGridNodeInfo := map[*GridNode]*GridNodeInfo{}
 	endClosed := map[*GridNodeInfo]struct{}{}
 
 	for beginOpenList.Len() > 0 && endOpenList.Len() > 0 {
-		nodeByBegin := beginOpenList.Poll().(*GridNodeInfo)
+		nodeByBegin := beginOpenList.Front()
 		if nodeByBegin.GridNode == endNode {
 			return nodeByBegin.GetPaths()
 		}
@@ -35,11 +33,11 @@ func (grid *Grid) PathFindingBiBreadthFirst(startX, startY, endX, endY int) (res
 				continue
 			}
 			info.Parent = nodeByBegin
-			beginOpenList.Offer(info)
+			beginOpenList.PushBack(info)
 			beginClosed[info] = struct{}{}
 		}
 
-		nodeByEnd := endOpenList.Poll().(*GridNodeInfo)
+		nodeByEnd := endOpenList.Front()
 		if nodeByEnd.GridNode == startNode {
 			return nodeByEnd.GetPaths()
 		}
@@ -55,7 +53,7 @@ func (grid *Grid) PathFindingBiBreadthFirst(startX, startY, endX, endY int) (res
 				continue
 			}
 			info.Parent = nodeByEnd
-			endOpenList.Offer(info)
+			endOpenList.PushBack(info)
 			endClosed[info] = struct{}{}
 		}
 	}

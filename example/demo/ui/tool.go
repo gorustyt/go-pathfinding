@@ -3,6 +3,7 @@ package ui
 import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 	path_finding "github.com/gorustyt/go-pathfinding"
 	"github.com/gorustyt/go-pathfinding/example/demo/grid_map"
@@ -55,21 +56,17 @@ func parseOptions(s []string, cfg *grid_map.Config) {
 	cfg.DontCrossCorners = dontCrossCorners
 }
 
-func getOptions2(cfg *grid_map.Config) (res []fyne.CanvasObject) {
-	return []fyne.CanvasObject{
-		widget.NewLabel("Options"),
-		widget.NewCheckGroup([]string{
-			optionsAllowDiagonal,
-			optionsBiDirectional,
-		}, func(s []string) {
-			parseOptions(s, cfg)
-		}),
-	}
-}
-
 const preferenceCurrentTutorial = "currentTutorial"
 
 func CreateTool(w fyne.Window, view func(), config *grid_map.Config) fyne.CanvasObject {
+	themes := container.NewGridWithColumns(2,
+		widget.NewButton("Dark", func() {
+			fyne.CurrentApp().Settings().SetTheme(theme.DarkTheme())
+		}),
+		widget.NewButton("Light", func() {
+			fyne.CurrentApp().Settings().SetTheme(theme.LightTheme())
+		}),
+	)
 	bStart := &widget.Button{
 		Text:       "start",
 		Importance: widget.SuccessImportance,
@@ -84,23 +81,25 @@ func CreateTool(w fyne.Window, view func(), config *grid_map.Config) fyne.Canvas
 			config.OnPause()
 		},
 	}
-	bStop := &widget.Button{
-		Text:       "stop",
-		Importance: widget.DangerImportance,
-		OnTapped: func() {
-			config.OnStop()
-		},
-	}
 	bClear := &widget.Button{
 		Text:       "clear",
-		Importance: widget.MediumImportance,
+		Importance: widget.DangerImportance,
 		OnTapped: func() {
 			config.OnClear()
 		},
 	}
+	label := widget.NewLabel("setting theme")
+	label.Alignment = fyne.TextAlignCenter
+
+	label1 := widget.NewLabel("start pathfinding")
+	label1.Alignment = fyne.TextAlignCenter
 	return container.NewBorder(container.NewVBox(
+		label,
 		widget.NewSeparator(),
-		container.NewGridWithColumns(4, bStart, bPause, bStop, bClear),
+		themes,
+		widget.NewSeparator(),
+		label1,
+		container.NewGridWithColumns(3, bStart, bPause, bClear),
 		widget.NewSeparator(),
 	), nil, nil, nil, createToolTree(w, view, config))
 }

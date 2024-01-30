@@ -21,28 +21,36 @@ type Heuristic func(x int, y int) int
 
 // 一个格子存储的对象
 type GridNodeInfo struct {
-	trace *DebugTrace
+	trace *debugTrace
 	*GridNode
-	Parent *GridNodeInfo
-	G      float64
-	H      float64
-	F      float64
-	Open   bool //是否第一次访问
+	Parent    *GridNodeInfo
+	G         float64
+	H         float64
+	F         float64
+	Open      bool //是否第一次访问
+	heapIndex int
 }
 
-func (info *GridNodeInfo) GetPaths() (res []*GridNodeInfo) {
+func (info *GridNodeInfo) GetPaths() (res []*PathPoint) {
+	res = append(res, &PathPoint{X: info.X, Y: info.Y})
 	node := info.Parent
 	for node != nil {
-		res = append(res, node)
+		res = append(res, &PathPoint{X: node.X, Y: node.Y})
 		node = node.Parent
+	}
+	i, j := 0, len(res)-1
+	for i < j {
+		res[i], res[j] = res[j], res[i]
+		i++
+		j--
 	}
 	return
 }
-func (info *GridNodeInfo) ExpandPath(paths []*GridNodeInfo, m func(x, y int) *GridNodeInfo) (expanded []*GridNodeInfo) {
+func (info *GridNodeInfo) ExpandPath(paths []*PathPoint) (expanded []*PathPoint) {
 
 	var (
 		length          = len(paths)
-		coord0, coord1  *GridNodeInfo
+		coord0, coord1  *PathPoint
 		interpolated    [][]int
 		interpolatedLen int
 		i, j            int
@@ -57,7 +65,7 @@ func (info *GridNodeInfo) ExpandPath(paths []*GridNodeInfo, m func(x, y int) *Gr
 		interpolated = info.interpolate(coord0.X, coord0.Y, coord1.X, coord1.Y)
 		interpolatedLen = len(interpolated)
 		for j = 0; j < interpolatedLen-1; j++ {
-			expanded = append(expanded, m(interpolated[j][0], interpolated[j][1]))
+			expanded = append(expanded, &PathPoint{interpolated[j][0], interpolated[j][1]})
 		}
 	}
 	expanded = append(expanded, paths[length-1])
@@ -166,8 +174,18 @@ func (grid *Grid) init() {
 
 }
 
-func (grid *Grid) SetMatrix(matrix [][]*GridNode) {
+func (grid *Grid) TracePath(node *GridNode) bool {
+	if grid.Config.Trace != nil {
+		return grid.Config.Trace.TracePath(node.X, node.Y, false)
+	}
+	return true
+}
 
+func (grid *Grid) TraceJumpPointPath(node *GridNode) bool {
+	if grid.Config.Trace != nil {
+		return grid.Config.Trace.TracePath(node.X, node.Y, true)
+	}
+	return true
 }
 
 func (grid *Grid) packPos(x, y int) (pos int64) {
@@ -205,7 +223,7 @@ func (grid *Grid) Clone() *Grid {
 }
 func (grid *Grid) PathFindingRoute(cmd PathFindingType) (cmdFunc PathFindingCmd) {
 	wrap := func(f PathFindingCmd) PathFindingCmd {
-		return func(startX, startY, endX, endY int) (res []*GridNodeInfo) {
+		return func(startX, startY, endX, endY int) (res []*PathPoint) {
 			//begin := time.Now()
 			res = f(startX, startY, endX, endY)
 			//since := time.Since(begin)
