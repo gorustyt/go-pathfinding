@@ -1,12 +1,14 @@
 package ui
 
 import (
-	"fmt"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/cmd/fyne_settings/settings"
+	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/driver/desktop"
 	"fyne.io/fyne/v2/storage"
+	"fyne.io/fyne/v2/theme"
+	"fyne.io/fyne/v2/widget"
 	"github.com/gorustyt/go-pathfinding/example/demo/grid_map"
 	"log"
 	"net/url"
@@ -23,8 +25,9 @@ func MakeMenu(a fyne.App, w fyne.Window, cfg *grid_map.Config) *fyne.MainMenu {
 				log.Println("Cancelled")
 				return
 			}
+			cfg.Load(reader)
 		}, w)
-		fd.SetFilter(storage.NewExtensionFileFilter([]string{".png", ".jpg", ".jpeg"}))
+		fd.SetFilter(storage.NewExtensionFileFilter([]string{".txt"}))
 		fd.Show()
 	})
 	saveItem := fyne.NewMenuItem("Save map", func() {
@@ -37,52 +40,48 @@ func MakeMenu(a fyne.App, w fyne.Window, cfg *grid_map.Config) *fyne.MainMenu {
 				log.Println("Cancelled")
 				return
 			}
-
+			cfg.Dump(writer)
 		}, w)
 	})
-	openFolderItem := fyne.NewMenuItem("Open Folder", func() {
-		dialog.ShowFolderOpen(func(list fyne.ListableURI, err error) {
-			if err != nil {
-				dialog.ShowError(err, w)
-				return
-			}
-			if list == nil {
-				log.Println("Cancelled")
-				return
-			}
-
-			children, err := list.List()
-			if err != nil {
-				dialog.ShowError(err, w)
-				return
-			}
-			out := fmt.Sprintf("Folder %s (%d children):\n%s", list.Name(), len(children), list.String())
-			dialog.ShowInformation("Folder Open", out, w)
-		}, w)
-	})
-	openItem.Checked = true
 
 	openSettings := func() {
-		w := a.NewWindow("Fyne Settings")
+		w := a.NewWindow("Settings")
 		w.SetContent(settings.NewSettings().LoadAppearanceScreen(w))
 		w.Resize(fyne.NewSize(440, 520))
 		w.Show()
 	}
-	settingsItem := fyne.NewMenuItem("Settings", openSettings)
+	settingsItem := fyne.NewMenuItem("settings", openSettings)
 	settingsShortcut := &desktop.CustomShortcut{KeyName: fyne.KeyComma, Modifier: fyne.KeyModifierShortcutDefault}
 	settingsItem.Shortcut = settingsShortcut
-
-	themeItem := fyne.NewMenuItem("theme", nil)
+	label := widget.NewLabel("setting theme")
+	label.Alignment = fyne.TextAlignCenter
+	themes := container.NewGridWithColumns(2,
+		widget.NewButton("Dark", func() {
+			fyne.CurrentApp().Settings().SetTheme(theme.DarkTheme())
+		}),
+		widget.NewButton("Light", func() {
+			fyne.CurrentApp().Settings().SetTheme(theme.LightTheme())
+		}),
+	)
+	themeItem := fyne.NewMenuItem("Theme", func() {
+		w1 := a.NewWindow("Theme Settings")
+		w1.SetContent(container.NewVBox(
+			label,
+			themes,
+		))
+		w1.Resize(fyne.NewSize(200, 200))
+		w1.Show()
+	})
 	settingMenu := fyne.NewMenu("Settings", settingsItem, themeItem)
 	helpMenu := fyne.NewMenu("Help",
 		fyne.NewMenuItem("Documentation", func() {
-			u, _ := url.Parse("https://developer.fyne.io")
+			u, _ := url.Parse("https://github.com/gorustyt/go-pathfinding")
 			_ = a.OpenURL(u)
 		}),
 		fyne.NewMenuItemSeparator(),
 	)
 	// a quit item will be appended to our first (File) menu
-	file := fyne.NewMenu("File", openFolderItem, openItem, saveItem)
+	file := fyne.NewMenu("File", openItem, saveItem)
 	main := fyne.NewMainMenu(
 		file,
 		settingMenu,

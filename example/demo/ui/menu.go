@@ -63,6 +63,7 @@ func (m *OptionsMenu) Refresh() {
 		m.options.Selected = []string{
 			optionsAllowDiagonal,
 		}
+		m.optionsLabel.Show()
 		m.options.Show()
 
 		m.weight.Show()
@@ -79,6 +80,7 @@ func (m *OptionsMenu) Refresh() {
 		m.options.Selected = []string{
 			optionsAllowDiagonal,
 		}
+		m.optionsLabel.Show()
 		m.options.Show()
 
 		m.weight.Show()
@@ -94,6 +96,7 @@ func (m *OptionsMenu) Refresh() {
 		m.options.Selected = []string{
 			optionsAllowDiagonal,
 		}
+		m.optionsLabel.Show()
 		m.options.Show()
 		m.weight.Hide()
 		m.secondLimit.Hide()
@@ -109,6 +112,7 @@ func (m *OptionsMenu) Refresh() {
 		m.options.Selected = []string{
 			optionsAllowDiagonal,
 		}
+		m.optionsLabel.Show()
 		m.options.Show()
 
 		m.weight.Hide()
@@ -116,7 +120,7 @@ func (m *OptionsMenu) Refresh() {
 	case path_finding.DescJumpPointSearch, path_finding.DescOrthogonalJumpPoint:
 		m.heuristicLabel.Show()
 		m.heuristic.Show()
-
+		m.optionsLabel.Hide()
 		m.options.Hide()
 		m.weight.Hide()
 		m.secondLimit.Hide()
@@ -146,7 +150,6 @@ func (m *OptionsMenu) initOptions() {
 
 func (m *OptionsMenu) initEntryWeight() {
 	entry := widget.NewEntry()
-	entry.Text = "1"
 	entry.Bind(m.cfg.Weight)
 	m.weight = container.NewGridWithColumns(2,
 		entry,
@@ -156,7 +159,6 @@ func (m *OptionsMenu) initEntryWeight() {
 func (m *OptionsMenu) initSecondLimit() {
 	entry := widget.NewEntry()
 	entry.Bind(m.cfg.SecondLimit)
-	entry.Text = "10"
 	m.secondLimit = container.NewGridWithColumns(2,
 		entry,
 		widget.NewLabel("Seconds limit"))

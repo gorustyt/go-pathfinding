@@ -19,11 +19,12 @@ func main() {
 		content.Objects = []fyne.CanvasObject{container.NewScroll(m)}
 		content.Refresh()
 	}
+	cfg := m.(*grid_map.Map).Cfg
 	gridMap := container.NewBorder(
 		nil, nil, nil, nil, content)
-	split := container.NewHSplit(ui.CreateTool(w, setView, m.(*grid_map.Map).Cfg), gridMap)
+	split := container.NewHSplit(ui.CreateTool(w, setView, cfg), gridMap)
 	split.Offset = 0.2
-	w.SetMainMenu(ui.MakeMenu(a, w))
+	w.SetMainMenu(ui.MakeMenu(a, w, cfg))
 	w.SetContent(split)
 	w.Resize(fyne.NewSize(float32(width), float32(height)))
 	w.ShowAndRun()

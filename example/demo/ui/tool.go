@@ -3,7 +3,6 @@ package ui
 import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
-	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 	path_finding "github.com/gorustyt/go-pathfinding"
 	"github.com/gorustyt/go-pathfinding/example/demo/grid_map"
@@ -57,14 +56,7 @@ func parseOptions(s []string, cfg *grid_map.Config) {
 const preferenceCurrentTutorial = "currentTutorial"
 
 func CreateTool(w fyne.Window, view func(), config *grid_map.Config) fyne.CanvasObject {
-	themes := container.NewGridWithColumns(2,
-		widget.NewButton("Dark", func() {
-			fyne.CurrentApp().Settings().SetTheme(theme.DarkTheme())
-		}),
-		widget.NewButton("Light", func() {
-			fyne.CurrentApp().Settings().SetTheme(theme.LightTheme())
-		}),
-	)
+
 	bStart := &widget.Button{
 		Text:       "start",
 		Importance: widget.SuccessImportance,
@@ -86,15 +78,30 @@ func CreateTool(w fyne.Window, view func(), config *grid_map.Config) fyne.Canvas
 			config.OnClear()
 		},
 	}
-	label := widget.NewLabel("setting theme")
-	label.Alignment = fyne.TextAlignCenter
+	dump := config.Dump
+	config.Dump = func(closer fyne.URIWriteCloser) {
+		bStart.Disabled()
+		bPause.Disabled()
+		bClear.Disabled()
+		dump(closer)
+		bStart.Enable()
+		bPause.Enable()
+		bClear.Enable()
+	}
+	load := config.Load
+	config.Load = func(closer fyne.URIReadCloser) {
+		bStart.Disabled()
+		bPause.Disabled()
+		bClear.Disabled()
+		load(closer)
+		bStart.Enable()
+		bPause.Enable()
+		bClear.Enable()
+	}
 
 	label1 := widget.NewLabel("start pathfinding")
 	label1.Alignment = fyne.TextAlignCenter
 	return container.NewBorder(container.NewVBox(
-		label,
-		widget.NewSeparator(),
-		themes,
 		widget.NewSeparator(),
 		label1,
 		container.NewGridWithColumns(3, bStart, bPause, bClear),

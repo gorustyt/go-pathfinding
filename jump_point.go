@@ -41,11 +41,11 @@ func (grid *Grid) PathFindingJumpPoint(startX, startY, endX, endY int) (res []*P
 			if jumpPoint == nil {
 				continue
 			}
-			if !grid.TraceJumpPointPath(jumpPoint) {
-				return
-			}
 			if _, ok := closed[jumpPoint]; ok {
 				continue
+			}
+			if !grid.TraceJumpPointPath(jumpPoint) {
+				return
 			}
 			jumpNode, ok := gridNodeInfo[jumpPoint]
 			if !ok {

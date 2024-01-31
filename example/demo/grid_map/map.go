@@ -23,6 +23,7 @@ const (
 	mapStatusNone mapStatus = iota
 	mapStatusPathFinding
 	mapStatusPause
+	mapStatusDumpOrLoading
 )
 
 type Map struct {
@@ -53,10 +54,6 @@ type Map struct {
 }
 
 func (g *Map) OnClear() {
-	if g.state == mapStatusNone {
-		return
-	}
-	g.state = mapStatusNone
 	for _, v := range g.obs {
 		v.SetWalkAble(true)
 	}
@@ -71,7 +68,7 @@ func (g *Map) OnClear() {
 	}
 
 	g.traceLock.Unlock()
-
+	g.state = mapStatusNone
 	g.Refresh()
 }
 
@@ -142,7 +139,13 @@ func (g *Map) OnStart() {
 			if gg == g.start || gg == g.end {
 				return
 			}
+			for _, tmp := range g.obs {
+				if tmp == gg {
+					return
+				}
+			}
 			if v.IsJumpPoint {
+
 				for i, tmp := range g.peekPaths {
 					if tmp == gg {
 						g.peekPaths = append(g.peekPaths[:i], g.peekPaths[i+1:]...)
@@ -156,11 +159,6 @@ func (g *Map) OnStart() {
 					}
 				}
 				for _, tmp := range g.peekPaths {
-					if tmp == gg {
-						return
-					}
-				}
-				for _, tmp := range g.obs {
 					if tmp == gg {
 						return
 					}
@@ -198,6 +196,11 @@ func (g *Map) renderPaths(paths []*path_finding.PathPoint) {
 		for i, tmp := range g.peekPaths {
 			if tmp == gg {
 				g.peekPaths = append(g.peekPaths[:i], g.peekPaths[i+1:]...)
+			}
+		}
+		for i, tmp := range g.jumpPointsPath {
+			if tmp == gg {
+				g.jumpPointsPath = append(g.jumpPointsPath[:i], g.jumpPointsPath[i+1:]...)
 			}
 		}
 		g.paths = append(g.paths, gg)
@@ -392,7 +395,7 @@ func NewMap(w, h int, win fyne.Window) fyne.CanvasObject {
 		scale:   1,
 		oneGird: 40}
 	g.Cfg = NewConfig(g.OnStart, g.OnPause, g.OnClear)
-	g.Cfg.Dump = g.Dump()
+	g.Cfg.Dump = g.Dump
 	g.Cfg.Load = g.Load
 	g.base.ExtendBaseWidget(g)
 	maxW, maxH := g.GetGridSize()
@@ -423,7 +426,7 @@ func NewMap(w, h int, win fyne.Window) fyne.CanvasObject {
 			r := canvas.NewRectangle(color.Black)
 			r.StrokeWidth = 1
 			if i < maxW && j < maxH {
-				gg := newGrid(i, j, g.oneGird)
+				gg := newGrid(i, j)
 				gg.g = r
 				gg.m = g
 				g.grids[i][j] = gg
@@ -483,7 +486,7 @@ type Config struct {
 func NewConfig(OnStart func(),
 	OnPause func(),
 	OnClear func()) *Config {
-	return &Config{
+	c := &Config{
 		OnClear:           OnClear,
 		OnPause:           OnPause,
 		OnStart:           OnStart,
@@ -491,6 +494,9 @@ func NewConfig(OnStart func(),
 		SecondLimit:       binding.NewString(),
 		PathFindingConfig: path_finding.GetDefaultConfig(),
 	}
+	c.SecondLimit.Set("10")
+	c.Weight.Set("1")
+	return c
 }
 
 func (cfg *Config) GetPathFindingConfig() (t path_finding.PathFindingType, c path_finding.PathFindingConfig) {

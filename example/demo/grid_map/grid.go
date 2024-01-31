@@ -119,7 +119,7 @@ func (g *grid) Size() fyne.Size {
 
 func (g *grid) Refresh() {
 	g.g.FillColor = g.fillColor
-	g.Move(fyne.Position{X: g.i * g.m.GetScale(), Y: g.j * g.m.GetScale()})
+	g.Move(fyne.Position{X: g.i * g.m.GetScale(), Y: g.j * g.m.GetScale()}.Subtract(g.m.offset))
 	g.g.Resize(fyne.NewSize(g.m.GetScale(), g.m.GetScale()))
 	g.Resize(fyne.NewSize(g.m.GetScale(), g.m.GetScale()))
 	g.g.Refresh()
@@ -130,7 +130,7 @@ func (g *grid) CreateRenderer() fyne.WidgetRenderer {
 	return newGridRenderer(g)
 }
 
-func newGrid(i, j int, scale float32) *grid {
+func newGrid(i, j int) *grid {
 	n := &grid{i: float32(i), j: float32(j), fillColor: white}
 	n.ExtendBaseWidget(n)
 	return n
