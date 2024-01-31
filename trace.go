@@ -53,7 +53,6 @@ func (trace *debugTrace) SetPathHandle(fn func(v *TracePoint)) {
 func (trace *debugTrace) TracePath(x, y int, isJumpPoint bool) bool {
 	select {
 	case <-trace.closeCh:
-		close(trace.ch)
 		return false
 	case trace.ch <- &TracePoint{
 		IsJumpPoint: isJumpPoint,
