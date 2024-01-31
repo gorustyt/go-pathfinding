@@ -4,33 +4,63 @@ import (
 	"fmt"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/cmd/fyne_settings/settings"
+	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/driver/desktop"
-	"fyne.io/fyne/v2/theme"
+	"fyne.io/fyne/v2/storage"
+	"github.com/gorustyt/go-pathfinding/example/demo/grid_map"
+	"log"
 	"net/url"
 )
 
-func MakeMenu(a fyne.App, w fyne.Window) *fyne.MainMenu {
-	newItem := fyne.NewMenuItem("New", nil)
-	checkedItem := fyne.NewMenuItem("Checked", nil)
-	checkedItem.Checked = true
-	disabledItem := fyne.NewMenuItem("Disabled", nil)
-	disabledItem.Disabled = true
-	otherItem := fyne.NewMenuItem("Other", nil)
-	mailItem := fyne.NewMenuItem("Mail", func() { fmt.Println("Menu New->Other->Mail") })
-	mailItem.Icon = theme.MailComposeIcon()
-	otherItem.ChildMenu = fyne.NewMenu("",
-		fyne.NewMenuItem("Project", func() { fmt.Println("Menu New->Other->Project") }),
-		mailItem,
-	)
-	fileItem := fyne.NewMenuItem("File", func() { fmt.Println("Menu New->File") })
-	fileItem.Icon = theme.FileIcon()
-	dirItem := fyne.NewMenuItem("Directory", func() { fmt.Println("Menu New->Directory") })
-	dirItem.Icon = theme.FolderIcon()
-	newItem.ChildMenu = fyne.NewMenu("",
-		fileItem,
-		dirItem,
-		otherItem,
-	)
+func MakeMenu(a fyne.App, w fyne.Window, cfg *grid_map.Config) *fyne.MainMenu {
+	openItem := fyne.NewMenuItem("Open map", func() {
+		fd := dialog.NewFileOpen(func(reader fyne.URIReadCloser, err error) {
+			if err != nil {
+				dialog.ShowError(err, w)
+				return
+			}
+			if reader == nil {
+				log.Println("Cancelled")
+				return
+			}
+		}, w)
+		fd.SetFilter(storage.NewExtensionFileFilter([]string{".png", ".jpg", ".jpeg"}))
+		fd.Show()
+	})
+	saveItem := fyne.NewMenuItem("Save map", func() {
+		dialog.ShowFileSave(func(writer fyne.URIWriteCloser, err error) {
+			if err != nil {
+				dialog.ShowError(err, w)
+				return
+			}
+			if writer == nil {
+				log.Println("Cancelled")
+				return
+			}
+
+		}, w)
+	})
+	openFolderItem := fyne.NewMenuItem("Open Folder", func() {
+		dialog.ShowFolderOpen(func(list fyne.ListableURI, err error) {
+			if err != nil {
+				dialog.ShowError(err, w)
+				return
+			}
+			if list == nil {
+				log.Println("Cancelled")
+				return
+			}
+
+			children, err := list.List()
+			if err != nil {
+				dialog.ShowError(err, w)
+				return
+			}
+			out := fmt.Sprintf("Folder %s (%d children):\n%s", list.Name(), len(children), list.String())
+			dialog.ShowInformation("Folder Open", out, w)
+		}, w)
+	})
+	openItem.Checked = true
 
 	openSettings := func() {
 		w := a.NewWindow("Fyne Settings")
@@ -41,32 +71,9 @@ func MakeMenu(a fyne.App, w fyne.Window) *fyne.MainMenu {
 	settingsItem := fyne.NewMenuItem("Settings", openSettings)
 	settingsShortcut := &desktop.CustomShortcut{KeyName: fyne.KeyComma, Modifier: fyne.KeyModifierShortcutDefault}
 	settingsItem.Shortcut = settingsShortcut
-	w.Canvas().AddShortcut(settingsShortcut, func(shortcut fyne.Shortcut) {
-		openSettings()
-	})
 
-	cutShortcut := &fyne.ShortcutCut{Clipboard: w.Clipboard()}
-	cutItem := fyne.NewMenuItem("Cut", func() {
-		shortcutFocused(cutShortcut, w)
-	})
-	cutItem.Shortcut = cutShortcut
-	copyShortcut := &fyne.ShortcutCopy{Clipboard: w.Clipboard()}
-	copyItem := fyne.NewMenuItem("Copy", func() {
-		shortcutFocused(copyShortcut, w)
-	})
-	copyItem.Shortcut = copyShortcut
-	pasteShortcut := &fyne.ShortcutPaste{Clipboard: w.Clipboard()}
-	pasteItem := fyne.NewMenuItem("Paste", func() {
-		shortcutFocused(pasteShortcut, w)
-	})
-	pasteItem.Shortcut = pasteShortcut
-	performFind := func() { fmt.Println("Menu Find") }
-	findItem := fyne.NewMenuItem("Find", performFind)
-	findItem.Shortcut = &desktop.CustomShortcut{KeyName: fyne.KeyF, Modifier: fyne.KeyModifierShortcutDefault | fyne.KeyModifierAlt | fyne.KeyModifierShift | fyne.KeyModifierControl | fyne.KeyModifierSuper}
-	w.Canvas().AddShortcut(findItem.Shortcut, func(shortcut fyne.Shortcut) {
-		performFind()
-	})
-
+	themeItem := fyne.NewMenuItem("theme", nil)
+	settingMenu := fyne.NewMenu("Settings", settingsItem, themeItem)
 	helpMenu := fyne.NewMenu("Help",
 		fyne.NewMenuItem("Documentation", func() {
 			u, _ := url.Parse("https://developer.fyne.io")
@@ -75,29 +82,11 @@ func MakeMenu(a fyne.App, w fyne.Window) *fyne.MainMenu {
 		fyne.NewMenuItemSeparator(),
 	)
 	// a quit item will be appended to our first (File) menu
-	file := fyne.NewMenu("File", newItem, checkedItem, disabledItem)
+	file := fyne.NewMenu("File", openFolderItem, openItem, saveItem)
 	main := fyne.NewMainMenu(
 		file,
-		fyne.NewMenu("Edit", cutItem, copyItem, pasteItem, fyne.NewMenuItemSeparator(), findItem),
+		settingMenu,
 		helpMenu,
 	)
-	checkedItem.Action = func() {
-		checkedItem.Checked = !checkedItem.Checked
-		main.Refresh()
-	}
 	return main
-}
-
-func shortcutFocused(s fyne.Shortcut, w fyne.Window) {
-	switch sh := s.(type) {
-	case *fyne.ShortcutCopy:
-		sh.Clipboard = w.Clipboard()
-	case *fyne.ShortcutCut:
-		sh.Clipboard = w.Clipboard()
-	case *fyne.ShortcutPaste:
-		sh.Clipboard = w.Clipboard()
-	}
-	if focused, ok := w.Canvas().Focused().(fyne.Shortcutable); ok {
-		focused.TypedShortcut(s)
-	}
 }

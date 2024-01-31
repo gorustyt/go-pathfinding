@@ -38,11 +38,12 @@ type Map struct {
 	scale   float32          //缩放
 	lock    sync.Mutex
 
-	start     *grid
-	end       *grid
-	paths     []*grid
-	peekPaths []*grid
-	obs       []*grid
+	start          *grid
+	end            *grid
+	paths          []*grid
+	peekPaths      []*grid
+	jumpPointsPath []*grid
+	obs            []*grid
 
 	Cfg        *Config
 	trace      path_finding.DebugTrace
@@ -107,6 +108,10 @@ func (g *Map) clearPeekPaths() {
 func (g *Map) clearAllPaths() {
 	g.clearPaths()
 	g.clearPeekPaths()
+	for _, v := range g.jumpPointsPath {
+		v.SetWalkAble(true)
+	}
+	g.jumpPointsPath = g.jumpPointsPath[:0]
 }
 
 func (g *Map) OnStart() {
@@ -138,8 +143,18 @@ func (g *Map) OnStart() {
 				return
 			}
 			if v.IsJumpPoint {
-
+				for i, tmp := range g.peekPaths {
+					if tmp == gg {
+						g.peekPaths = append(g.peekPaths[:i], g.peekPaths[i+1:]...)
+					}
+				}
+				g.jumpPointsPath = append(g.jumpPointsPath, gg)
 			} else {
+				for _, tmp := range g.jumpPointsPath {
+					if tmp == gg {
+						return
+					}
+				}
 				for _, tmp := range g.peekPaths {
 					if tmp == gg {
 						return
@@ -324,7 +339,9 @@ func (g *Map) drawMap() {
 	for _, v := range g.peekPaths {
 		v.SetPeekPath()
 	}
-
+	for _, v := range g.jumpPointsPath {
+		v.SetJumpPointPath()
+	}
 	gw, gh := g.GetGridSize()
 	for i := 0; i < gw; i++ {
 		for j := 0; j < gh; j++ {
@@ -375,6 +392,8 @@ func NewMap(w, h int, win fyne.Window) fyne.CanvasObject {
 		scale:   1,
 		oneGird: 40}
 	g.Cfg = NewConfig(g.OnStart, g.OnPause, g.OnClear)
+	g.Cfg.Dump = g.Dump()
+	g.Cfg.Load = g.Load
 	g.base.ExtendBaseWidget(g)
 	maxW, maxH := g.GetGridSize()
 	g.rows = make([][]*canvas.Line, maxW+1)
@@ -457,6 +476,8 @@ type Config struct {
 	OnStart func()
 	OnPause func()
 	OnClear func()
+	Dump    func(closer fyne.URIWriteCloser)
+	Load    func(fyne.URIReadCloser)
 }
 
 func NewConfig(OnStart func(),
