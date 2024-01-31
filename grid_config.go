@@ -11,7 +11,6 @@ const (
 	DescDijkstra            = "Dijkstra"
 	DescJumpPointSearch     = "Jump Point Search"
 	DescOrthogonalJumpPoint = "Orthogonal Jump Point"
-	DescTrace               = "Trace"
 )
 
 func GetPathFindingType(dest string, cfg *PathFindingConfig) PathFindingType {
@@ -38,9 +37,12 @@ func GetPathFindingType(dest string, cfg *PathFindingConfig) PathFindingType {
 			return BiDijkstra
 		}
 		return Dijkstra
-	case DescJumpPointSearch, DescOrthogonalJumpPoint:
+	case DescJumpPointSearch:
+		cfg.DiagonalMovement = DiagonalMovementIfAtMostOneObstacle
 		return JumpPoint
-	case DescTrace:
+	case DescOrthogonalJumpPoint:
+		cfg.DiagonalMovement = DiagonalMovementNever
+		return JumpPoint
 	}
 	return Undefined
 }
@@ -131,5 +133,11 @@ func WithHeuristic(Heuristic Heuristic) PathFindingConfigOptions {
 func WithDontCrossCorners(DontCrossCorners bool) PathFindingConfigOptions {
 	return func(cfg *PathFindingConfig) {
 		cfg.DontCrossCorners = DontCrossCorners
+	}
+}
+
+func WithDebugTrace(trace DebugTrace) PathFindingConfigOptions {
+	return func(cfg *PathFindingConfig) {
+		cfg.Trace = trace
 	}
 }

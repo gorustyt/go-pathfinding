@@ -120,21 +120,6 @@ func (m *OptionsMenu) Refresh() {
 		m.options.Hide()
 		m.weight.Hide()
 		m.secondLimit.Hide()
-
-	case path_finding.DescTrace:
-		m.heuristicLabel.Show()
-		m.heuristic.Show()
-
-		m.options.Options = []string{
-			optionsAllowDiagonal,
-			optionsDontCrossCorners,
-		}
-		m.options.Selected = []string{
-			optionsAllowDiagonal,
-		}
-		m.options.Show()
-		m.weight.Hide()
-		m.secondLimit.Hide()
 	}
 }
 

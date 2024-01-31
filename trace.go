@@ -54,6 +54,12 @@ func (trace *debugTrace) TracePath(x, y int, isJumpPoint bool) bool {
 	select {
 	case <-trace.closeCh:
 		return false
+	default:
+
+	}
+	select {
+	case <-trace.closeCh:
+		return false
 	case trace.ch <- &TracePoint{
 		IsJumpPoint: isJumpPoint,
 		PathPoint: PathPoint{

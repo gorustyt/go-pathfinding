@@ -16,13 +16,14 @@ func main() {
 	m := grid_map.NewMap(width, height, w)
 	content := container.NewStack()
 	setView := func() {
-		content.Objects = []fyne.CanvasObject{container.NewVBox(m)}
+		content.Objects = []fyne.CanvasObject{container.NewScroll(m)}
 		content.Refresh()
 	}
 	gridMap := container.NewBorder(
 		nil, nil, nil, nil, content)
 	split := container.NewHSplit(ui.CreateTool(w, setView, m.(*grid_map.Map).Cfg), gridMap)
 	split.Offset = 0.2
+	w.SetMainMenu(ui.MakeMenu(a, w))
 	w.SetContent(split)
 	w.Resize(fyne.NewSize(float32(width), float32(height)))
 	w.ShowAndRun()

@@ -19,7 +19,6 @@ var toolData = map[string][]string{
 		path_finding.DescDijkstra,
 		path_finding.DescJumpPointSearch,
 		path_finding.DescOrthogonalJumpPoint,
-		path_finding.DescTrace,
 	},
 	path_finding.DescAStar:               {"_" + path_finding.DescAStar},
 	path_finding.DescIdaStar:             {"_" + path_finding.DescIdaStar},
@@ -28,7 +27,6 @@ var toolData = map[string][]string{
 	path_finding.DescDijkstra:            {"_" + path_finding.DescDijkstra},
 	path_finding.DescJumpPointSearch:     {"_" + path_finding.DescJumpPointSearch},
 	path_finding.DescOrthogonalJumpPoint: {"_" + path_finding.DescOrthogonalJumpPoint},
-	path_finding.DescTrace:               {"_" + path_finding.DescTrace},
 }
 
 const (
