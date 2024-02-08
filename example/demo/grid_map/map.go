@@ -337,13 +337,17 @@ func (g *Map) Visible() bool {
 }
 
 func (g *Map) initStartEnd() {
-	g.SetStart(0, 0)
 	w, h := g.GetGridSize()
-	if w > 10 && h > 10 {
-		g.SetEnd(10, 10)
-		return
+	if g.start == nil || g.start.i >= float32(w) || g.start.j >= float32(h) {
+		g.SetStart(0, 0)
 	}
-	g.SetEnd(w/2, h/2)
+	if g.end == nil || g.end.i >= float32(w) || g.end.j >= float32(h) {
+		if w > 10 && h > 10 {
+			g.SetEnd(10, 10)
+			return
+		}
+		g.SetEnd(w/2, h/2)
+	}
 }
 
 func (g *Map) drawMap() {
