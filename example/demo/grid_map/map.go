@@ -6,7 +6,6 @@ import (
 	"fyne.io/fyne/v2/data/binding"
 	"fyne.io/fyne/v2/widget"
 	path_finding "github.com/gorustyt/go-pathfinding"
-	"image/color"
 	"log"
 	"strconv"
 	"sync"
@@ -257,13 +256,17 @@ func (g *Map) OnGridChange(gg *grid, pos fyne.Position) {
 	g.Refresh()
 }
 
-func (g *Map) SetStartPosition(pos fyne.Position) {
-	i, j := g.GetIndex(pos)
+func (g *Map) SetStart(i, j int) {
+	if g.start != nil {
+		g.start.SetWalkAble(true)
+	}
 	g.start = g.grids[i][j]
 }
 
-func (g *Map) SetEndPosition(pos fyne.Position) {
-	i, j := g.GetIndex(pos)
+func (g *Map) SetEnd(i, j int) {
+	if g.end != nil {
+		g.end.SetWalkAble(true)
+	}
 	g.end = g.grids[i][j]
 }
 
@@ -311,7 +314,11 @@ func (g *Map) Position() fyne.Position {
 }
 
 func (g *Map) Resize(size fyne.Size) {
-
+	g.w = int(size.Width)
+	g.h = int(size.Height)
+	w, h := g.GetGridSize()
+	g.resize(w, h)
+	g.Refresh()
 }
 
 func (g *Map) Size() fyne.Size {
@@ -327,6 +334,16 @@ func (g *Map) GetScale() float32 {
 }
 func (g *Map) Visible() bool {
 	return !g.hide
+}
+
+func (g *Map) initStartEnd() {
+	g.SetStart(0, 0)
+	w, h := g.GetGridSize()
+	if w > 10 && h > 10 {
+		g.SetEnd(10, 10)
+		return
+	}
+	g.SetEnd(w/2, h/2)
 }
 
 func (g *Map) drawMap() {
@@ -398,43 +415,8 @@ func NewMap(w, h int, win fyne.Window) fyne.CanvasObject {
 	g.Cfg.Dump = g.Dump
 	g.Cfg.Load = g.Load
 	g.base.ExtendBaseWidget(g)
-	maxW, maxH := g.GetGridSize()
-	g.rows = make([][]*canvas.Line, maxW+1)
-	for i := range g.rows {
-		g.rows[i] = make([]*canvas.Line, maxH+1)
-	}
-
-	g.cols = make([][]*canvas.Line, maxW+1)
-	for i := range g.rows {
-		g.cols[i] = make([]*canvas.Line, maxH+1)
-	}
-
-	g.grids = make([][]*grid, maxW)
-	for i := range g.grids {
-		g.grids[i] = make([]*grid, maxH)
-	}
-
-	for i := 0; i < maxW; i++ {
-		for j := 0; j < maxH; j++ {
-			line := canvas.NewLine(color.Black)
-			line.StrokeWidth = 1
-			g.rows[i][j] = line
-			line1 := canvas.NewLine(color.Black)
-			line1.StrokeWidth = 1
-			g.cols[i][j] = line1
-
-			r := canvas.NewRectangle(color.Black)
-			r.StrokeWidth = 1
-			if i < maxW && j < maxH {
-				gg := newGrid(i, j)
-				gg.g = r
-				gg.m = g
-				g.grids[i][j] = gg
-			}
-		}
-	}
-	g.start = g.grids[0][0]
-	g.end = g.grids[10][10]
+	w, h = g.GetGridSize()
+	g.resize(w, h)
 	return g
 }
 
